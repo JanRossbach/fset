@@ -2,6 +2,7 @@
 /classes
 /checkouts
 .lsp
+TODOs.org
 profiles.clj
 pom.xml
 pom.xml.asc
