@@ -1,17 +1,15 @@
 (ns fset.core
   (:require
    [clojure.java.io :as io]
-   [lisb.core :refer [eval-ir-formula]]
    [clojure.pprint :refer [pprint]]
-   [lisb.high-level :refer [load-mch! save-mch! make-mch!]]
+   [fset.util :refer [load-mch! save-mch! make-mch!]]
    [lisb.fset.transform :refer [transform]]))
 
 ;; This is the entry point for the module.
 
 ;; define working Directories
-(def source-dir "resources/machines/fset-source/")
-
-(def target-dir "resources/machines/fset-target/")
+(def b-source-dir "resources/machines/b/source/")
+(def b-target-dir "resources/machines/b/target/")
 
 ;; Prefix of the resulting files after running transform-save-machines!
 (def prefix "rw_") ;

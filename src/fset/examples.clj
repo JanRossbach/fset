@@ -1,9 +1,8 @@
 (ns fset.examples
   (:require
-   [lisb.translation.util :refer [lisb->b]]
-   [lisb.translation.lisb2ir :refer [lisb->ir]]
-   [lisb.high-level :refer [save-mch!]]
-   [lisb.fset.core :refer [print-transform! target-dir]]))
+   [lisb.translation.util :refer [lisb->b lisb->ir]]
+   [fset.util :refer [save-mch! print-transform!]]))
+
 
 (def scheduler
   '(machine
