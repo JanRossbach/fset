@@ -2,31 +2,44 @@
   (:require
    [clojure.java.io :as io]
    [clojure.pprint :refer [pprint]]
-   [fset.util :refer [load-mch! save-mch! make-mch!]]
+   [fset.config :as cfg]
+   [lisb.translation.util :refer [ast->ir ir->ast ir->b b->ast lisb->ir]]
+   [lisb.prob.animator :refer [state-space!]]
    [lisb.fset.transform :refer [transform]]))
 
-;; This is the entry point for the module.
+;; Namespace for all the impure io functions.
 
-;; define working Directories
-(def b-source-dir "resources/machines/b/source/")
+(defn load-mch!
+  ([filename]
+   (let [input-string (slurp filename)
+         ast (b->ast input-string)]
+     {:ir (ast->ir ast)
+      :ss (state-space! ast)
+      :meta {}}))
+  ([filename meta-data]
+   (let [input-string (slurp filename)
+         ast (b->ast input-string)]
+     {:ir (ast->ir ast)
+      :ss (state-space! ast)
+      :meta meta-data})))
 
-(def b-target-dir "resources/machines/b/target/")
+(defn make-mch!
+  ([ir]
+   {:ir ir
+    :ss (state-space! (ir->ast ir))
+    :meta {}})
+  ([ir meta-data]
+   {:ir ir
+    :ss (state-space! (ir->ast ir))
+    :meta meta-data}))
 
-;; Prefix of the resulting files after running transform-save-machines!
-(def prefix "rw_") ;
-
-;; Set the metadata for the Translation Process.
-(def meta-data {:deferred-size 3})
-
-;; Specify a List of Machines if you don't want all of them to transform.
-(def machines-to-transform
-  '("Lift.mch"
-    ; "scheduler.mch"
-    ))
+(defn save-mch!
+  [ir target-filename]
+  (spit target-filename (ir->b ir)))
 
 (defn load-transform-machine!
   [source-filename]
-  (transform (load-mch! source-filename meta-data)))
+  (transform (load-mch! source-filename cfg/meta-data)))
 
 (defn load-transform-save-machine!
   [source-filename target-filename]
@@ -36,43 +49,34 @@
   "Transforms all or just a list of the B machines in the set source directory and
    returns a list of the IR's"
   ([]
-   (let [machines (.list (io/file source-dir))]
+   (let [machines (.list (io/file cfg/b-source-dir))]
      (for [m machines]
-       (load-transform-machine! (str source-dir m)))))
+       (load-transform-machine! (str cfg/b-source-dir m)))))
   ([machines]
    (for [m machines]
-     (load-transform-machine! (str source-dir m)))))
+     (load-transform-machine! (str cfg/b-source-dir m)))))
 
 (defn transform-save-machines!
   "Transforms all or just a list of the B machines in the set source directory and
    saves the as files in the set target directory."
   ([]
-   (let [machines (.list (io/file source-dir))]
+   (let [machines (.list (io/file cfg/b-source-dir))]
      (for [m machines]
-       (load-transform-save-machine! (str source-dir m) (str target-dir prefix m)))))
+       (load-transform-save-machine! (str cfg/b-source-dir m)
+                                     (str cfg/b-target-dir cfg/prefix m)))))
   ([machines]
    (for [m machines]
-     (load-transform-save-machine! (str source-dir m) (str target-dir prefix m)))))
+     (load-transform-save-machine! (str cfg/b-source-dir m)
+                                   (str cfg/b-target-dir cfg/prefix m)))))
 
 (defn print-transform!
-  "Takes a machine in IR and pprints it and its transformation."
-  [machine]
-  (let [m (make-mch! machine meta-data)
+  "Takes lisb code and pprints it's IR and it transformed IR."
+  [lisb]
+  (let [ir (lisb->ir lisb)
+        m (make-mch! ir cfg/meta-data)
         transformed-machine (:ir (transform m))]
     (pprint "--------------------------")
-    (pprint machine)
+    (pprint ir)
     (pprint "--------------------->>>>>")
     (pprint transformed-machine)
     (pprint "--------------------------")))
-
-(comment
-
-  (transform-machines! machines-to-transform)
-
-  (transform-machines!)
-
-  (transform-save-machines!)
-
-  (transform-save-machines! machines-to-transform)
-
-)

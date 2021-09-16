@@ -1,9 +1,7 @@
 (ns fset.examples
   (:require
-   [lisb.translation.util :refer [lisb->b lisb->ir]]
-   [fset.util :refer [save-mch!]]))
-
-(def target-dir "resources/machines/lisb/target/")
+   [fset.config :as cfg]
+   [fset.core :as fset]))
 
 (def scheduler
   '(machine
@@ -32,8 +30,13 @@
 
 (comment
 
-  (save-mch! (lisb->ir scheduler) (str target-dir "scheduler-lisb.mch"))
+  (fset/save-mch! (str cfg/target-dir "scheduler-lisb.mch"))
 
-  (lisb->b scheduler)
+  (fset/transform-machines! cfg/machines-to-transform)
+  (fset/transform-machines!)
 
+  (fset/transform-save-machines!)
+  (fset/transform-save-machines! cfg/machines-to-transform)
+
+  (fset/print-transform! scheduler)
 )
