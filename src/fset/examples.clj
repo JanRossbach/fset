@@ -1,8 +1,9 @@
 (ns fset.examples
   (:require
    [lisb.translation.util :refer [lisb->b lisb->ir]]
-   [fset.util :refer [save-mch! print-transform!]]))
+   [fset.util :refer [save-mch!]]))
 
+(def target-dir "resources/machines/lisb/target/")
 
 (def scheduler
   '(machine
@@ -30,8 +31,6 @@
                                (assign :waiting (difference :waiting #{:pp})))))))
 
 (comment
-
-  (print-transform! (lisb->ir scheduler))
 
   (save-mch! (lisb->ir scheduler) (str target-dir "scheduler-lisb.mch"))
 

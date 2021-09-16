@@ -1,6 +1,7 @@
 (ns fset.util
-  [lisb.translation.util :refer [ast->ir ir->ast ir->b]]
-  [lisb.core :refer [state-space!]])
+  (:require
+   [lisb.translation.util :refer [ast->ir ir->ast ir->b b->ast]]
+   [lisb.prob.animator :refer [state-space!]]))
 
 (defn load-mch!
   ([filename]
