@@ -3,6 +3,8 @@
    [fset.config :as cfg]
    [fset.core :as fset]))
 
+;; Namespace to run the core functions in a repl and experiment with results.
+
 (def scheduler
   '(machine
     (machine-variant)
@@ -33,9 +35,11 @@
   (fset/save-mch! (str cfg/target-dir "scheduler-lisb.mch"))
 
   (fset/transform-machines! cfg/machines-to-transform)
+
   (fset/transform-machines!)
 
   (fset/transform-save-machines!)
+
   (fset/transform-save-machines! cfg/machines-to-transform)
 
   (fset/print-transform! scheduler)

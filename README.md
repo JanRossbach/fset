@@ -1,14 +1,22 @@
 # fset
 
-A Clojure library designed to ... well, that part is up to you.
+A Clojure library designed to automatically rewrite B machines using lisb.
+The rewrite removes enumerated and deferred sets up to a certain size and replaces them with boolean variables.
+This is done to increase performance of partial order reduction optimizations in prob.
 
 ## Usage
 
-FIXME
+- start a repl with
+```
+lein repl
+```
+- Run the core functions in a repl
+- Examples can be found in experiment.clj
+- Configuration can be done in config.clj
 
 ## License
 
-Copyright © 2021 FIXME
+Copyright © 2021
 
 This program and the accompanying materials are made available under the
 terms of the Eclipse Public License 2.0 which is available at
