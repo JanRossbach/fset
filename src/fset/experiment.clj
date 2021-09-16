@@ -31,7 +31,6 @@
                                (assign :waiting (difference :waiting #{:pp})))))))
 
 (comment
-
   (fset/save-mch! (str cfg/target-dir "scheduler-lisb.mch"))
 
   (fset/transform-machines! cfg/machines-to-transform)

@@ -8,7 +8,6 @@
 (def lisb-source-dir "resources/machines/lisb/source/")
 (def lisb-target-dir "resources/machines/lisb/target/")
 
-
 ;; Prefix of the resulting files after running transform-save-machines!
 (def prefix "rw_") ;
 

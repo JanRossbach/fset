@@ -5,7 +5,6 @@
 
 ;; Pure Namespace which does the unraveling of finite sets on the immediate representation of lisb.
 
-
 (defn get-node-by-tag
   [el-tag ir]
   (s/select [(s/walker #(= (:tag %) el-tag))] ir))
