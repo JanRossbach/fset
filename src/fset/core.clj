@@ -3,35 +3,33 @@
    [clojure.java.io :as io]
    [clojure.pprint :refer [pprint]]
    [fset.config :as cfg]
-   [lisb.translation.util :refer [ast->ir ir->ast ir->b b->ast lisb->ir]]
+   [lisb.core :refer [eval-ir-formula]]
+   [lisb.translation.util :refer [b->ir ir->ast ir->b lisb->ir]]
    [lisb.prob.animator :refer [state-space!]]
    [lisb.fset.transform :refer [transform]]))
 
 ;; Namespace for all the impure io functions.
 
-(defn load-mch!
-  ([filename]
-   (let [input-string (slurp filename)
-         ast (b->ast input-string)]
-     {:ir (ast->ir ast)
-      :ss (state-space! ast)
-      :meta {}}))
-  ([filename meta-data]
-   (let [input-string (slurp filename)
-         ast (b->ast input-string)]
-     {:ir (ast->ir ast)
-      :ss (state-space! ast)
-      :meta meta-data})))
+;; FIXME
+(defn get-set-elements
+  [set-identifier machine]
+  (let [{:keys [ir ss meta]} machine]
+    (eval-ir-formula (lisb->ir `(bcomp-set [:x] (bmember? :x ~set-identifier))))))
+
+(defn add-meta-data [m]
+  (assoc m :meta (-> cfg/meta-data
+                      (assoc :sets-to-transform '(:PID)))))
 
 (defn make-mch!
   ([ir]
-   {:ir ir
-    :ss (state-space! (ir->ast ir))
-    :meta {}})
-  ([ir meta-data]
-   {:ir ir
-    :ss (state-space! (ir->ast ir))
-    :meta meta-data}))
+   (add-meta-data {:ir ir
+                   :ss (state-space! (ir->ast ir))})))
+
+(defn load-mch!
+  ([filename]
+   (let [input-string (slurp filename)
+         ir (b->ir input-string)]
+     (make-mch! ir))))
 
 (defn save-mch!
   [ir target-filename]
@@ -39,7 +37,7 @@
 
 (defn load-transform-machine!
   [source-filename]
-  (transform (load-mch! source-filename cfg/meta-data)))
+  (transform (load-mch! source-filename)))
 
 (defn load-transform-save-machine!
   [source-filename target-filename]
@@ -73,7 +71,7 @@
   "Takes lisb code and pprints it's IR and it transformed IR."
   [lisb]
   (let [ir (lisb->ir lisb)
-        m (make-mch! ir cfg/meta-data)
+        m (make-mch! ir)
         transformed-machine (:ir (transform m))]
     (pprint "--------------------------")
     (pprint ir)
