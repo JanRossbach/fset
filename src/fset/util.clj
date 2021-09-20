@@ -1,10 +1,12 @@
 (ns fset.util
-  [com.rpl.specter :as s])
+  (:require [com.rpl.specter :as s]))
 
-(defn get-node-by-tag
+;; Namespace to provide specter functionality to the transform ns.
+
+(defn get-nodes-by-tag
   [el-tag ir]
   (s/select [(s/walker #(= (:tag %) el-tag))] ir))
 
-(defn update-node-by-tag
-  [el-tag update-fn m]
-  (s/transform [:ir (s/walker #(= (:tag %) el-tag))] update-fn m))
+(defn update-nodes-by-tag
+  [tag update-fn ir]
+  (s/transform [(s/walker #(= (:tag %) tag))] update-fn ir))

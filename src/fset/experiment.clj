@@ -1,45 +1,57 @@
-(ns fset.examples
+(ns fset.experiment
   (:require
    [fset.config :as cfg]
-   [fset.core :as fset]))
+   [clojure.java.io :as io]
+   [fset.core :as fset]
+   [lisb.translation.util :refer [b->lisb lisb->b]]
+   [clojure.string :as string]))
 
 ;; Namespace to run the core functions in a repl and experiment with results.
 
-(def scheduler
-  '(machine
-    (machine-variant)
-    (machine-header :scheduler [])
-    (sets (deferred-set :PID))
-    (variables :active :ready :waiting)
-    (invariant (and
-                (member? :active (pow :PID))
-                (member? :ready (pow :PID))
-                (member? :waiting (pow :PID))
-                (subset? :active :PID)
-                (subset? :ready :PID)
-                (subset? :waiting :PID)))
-    (init (assign :active #{} :ready #{} :waiting #{}))
-    (operations
-     (operation [:rr] :nr_ready [] (assign :rr (count :ready)))
-     (operation [] :new [:pp] (select (and
-                                      (member? :pp :PID)
-                                      (not (member? :pp :active))
-                                      (not (member? :pp (union :ready :waiting))))
-                                      (assign :waiting (union :waiting #{:pp}))))
-     (operation [] :del [:pp] (select
-                               (member? :pp :waiting)
-                               (assign :waiting (difference :waiting #{:pp})))))))
+(defn file->lisb!
+  [filename]
+  (->> filename
+       (slurp)
+       (read-string)))
 
+(def scheduler (file->lisb! (str cfg/lisb-source-dir "scheduler.edn")))
+
+(def lift (file->lisb! (str cfg/lisb-source-dir "Lift.edn")))
+
+(defn transform-b-machines!
+  ([]
+   (let [machines (.list (io/file cfg/b-source-dir))]
+     (transform-b-machines! machines)))
+  ([machines]
+   (->> machines
+        (map #(str cfg/b-source-dir %))
+        (map slurp)
+        (map b->lisb)
+        (map fset/transform))))
+
+(defn printlns [s]
+  (map println (string/split s #"\n")))
+
+(defn print-transform!
+  "Takes lisb code and pprints it's IR and it transformed IR."
+  [lisb]
+  (printlns (lisb->b lisb))
+  (println "------------------>>>>>")
+  (printlns (fset/transform scheduler)))
+
+(defn save-b!
+  [fn content]
+  (spit (str cfg/b-target-dir cfg/prefix fn) content))
+
+
+;; repl with example of executing the high level commands
 (comment
-  (fset/save-mch! (str cfg/target-dir "scheduler-lisb.mch"))
+  (print-transform! scheduler)
 
-  (fset/transform-machines! cfg/machines-to-transform)
+  (print-transform! lift)
 
-  (fset/transform-machines!)
+  (transform-b-machines!)
 
-  (fset/transform-save-machines!)
+  (save-b! "scheduler.mch" (lisb->b scheduler))
 
-  (fset/transform-save-machines! cfg/machines-to-transform)
-
-  (fset/print-transform! scheduler)
-)
+  )

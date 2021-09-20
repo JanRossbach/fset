@@ -5,10 +5,6 @@ SETS
 
 VARIABLES active, ready, waiting
 
-DEFINITIONS
-    scope_PID == 1..3;
-    "LibraryMeta.def"
-
 INVARIANT  active : POW(PID) & ready : POW(PID) & waiting: POW(PID) & /* the types */
            /* and now the rest of the invariant */
            active <: PID &

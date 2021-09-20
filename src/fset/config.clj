@@ -17,6 +17,6 @@
 
 ;; Specify a List of Machines if you don't want all of them to transform.
 (def machines-to-transform
-  '("Lift.mch"
-    ; "scheduler.mch"
+  '(;;"Lift.mch"
+    "scheduler.mch"
     ))

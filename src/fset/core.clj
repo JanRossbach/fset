@@ -1,80 +1,48 @@
 (ns fset.core
   (:require
-   [clojure.java.io :as io]
-   [clojure.pprint :refer [pprint]]
    [fset.config :as cfg]
+   [fset.util :refer [update-nodes-by-tag get-nodes-by-tag]]
    [lisb.core :refer [eval-ir-formula]]
-   [lisb.translation.util :refer [b->ir ir->ast ir->b lisb->ir]]
-   [lisb.prob.animator :refer [state-space!]]
-   [lisb.fset.transform :refer [transform]]))
+   [lisb.translation.util :refer [lisb->ir ir->ast ir->b]]
+   [lisb.prob.animator :refer [state-space!]]))
 
-;; Namespace for all the impure io functions.
+;; High level public interface of the app. Ties together the lisb,  config and transform namespaces to provide all required functionality.
 
 ;; FIXME
-(defn get-set-elements
+(defn- get-set-elements
   [set-identifier machine]
   (let [{:keys [ir ss meta]} machine]
     (eval-ir-formula (lisb->ir `(bcomp-set [:x] (bmember? :x ~set-identifier))))))
 
-(defn add-meta-data [m]
+(defn- add-meta-data [m]
   (assoc m :meta (-> cfg/meta-data
                       (assoc :sets-to-transform '(:PID)))))
 
-(defn make-mch!
-  ([ir]
-   (add-meta-data {:ir ir
-                   :ss (state-space! (ir->ast ir))})))
+(defn- make-mch!
+  ([lisb]
+   (let [ir (lisb->ir lisb)]
+     (add-meta-data {:ir ir
+                     :ss (state-space! (ir->ast ir))}))))
 
-(defn load-mch!
-  ([filename]
-   (let [input-string (slurp filename)
-         ir (b->ir input-string)]
-     (make-mch! ir))))
+(defn- transform-invariant
+  [mch]
+  mch)
 
-(defn save-mch!
-  [ir target-filename]
-  (spit target-filename (ir->b ir)))
 
-(defn load-transform-machine!
-  [source-filename]
-  (transform (load-mch! source-filename)))
+(defn- transform-init
+  [mch]
+  mch)
 
-(defn load-transform-save-machine!
-  [source-filename target-filename]
-  (save-mch! (:ir (load-transform-machine! source-filename)) target-filename))
+(defn- transform-operations
+  [mch]
+  mch)
 
-(defn transform-machines!
-  "Transforms all or just a list of the B machines in the set source directory and
-   returns a list of the IR's"
-  ([]
-   (let [machines (.list (io/file cfg/b-source-dir))]
-     (for [m machines]
-       (load-transform-machine! (str cfg/b-source-dir m)))))
-  ([machines]
-   (for [m machines]
-     (load-transform-machine! (str cfg/b-source-dir m)))))
-
-(defn transform-save-machines!
-  "Transforms all or just a list of the B machines in the set source directory and
-   saves the as files in the set target directory."
-  ([]
-   (let [machines (.list (io/file cfg/b-source-dir))]
-     (for [m machines]
-       (load-transform-save-machine! (str cfg/b-source-dir m)
-                                     (str cfg/b-target-dir cfg/prefix m)))))
-  ([machines]
-   (for [m machines]
-     (load-transform-save-machine! (str cfg/b-source-dir m)
-                                   (str cfg/b-target-dir cfg/prefix m)))))
-
-(defn print-transform!
-  "Takes lisb code and pprints it's IR and it transformed IR."
+(defn transform
+  "Takes lisb code and returns a desettyfied B machine as B string."
   [lisb]
-  (let [ir (lisb->ir lisb)
-        m (make-mch! ir)
-        transformed-machine (:ir (transform m))]
-    (pprint "--------------------------")
-    (pprint ir)
-    (pprint "--------------------->>>>>")
-    (pprint transformed-machine)
-    (pprint "--------------------------")))
+  (->> (make-mch! lisb)
+       (transform-invariant)
+       (transform-init)
+       (transform-operations)
+       (:ir)
+       (ir->b)))
