@@ -13,7 +13,8 @@
 
 ;; Set the metadata for the Translation Process.
 (def meta-data {:deferred-size 3
-                :max-transform-size 10})
+                :max-transform-size 10
+                :sets-to-transform '(:PID)})
 
 ;; Specify a List of Machines if you don't want all of them to transform.
 (def machines-to-transform

@@ -1,7 +1,8 @@
 (ns fset.core
   (:require
    [fset.config :as cfg]
-   [fset.util :refer [update-nodes-by-tag get-nodes-by-tag]]
+   [clojure.spec.alpha :as spec]
+   [fset.util :as util]
    [lisb.core :refer [eval-ir-formula]]
    [lisb.translation.util :refer [lisb->ir ir->ast ir->b]]
    [lisb.prob.animator :refer [state-space!]]))
@@ -14,27 +15,29 @@
   (let [{:keys [ir ss meta]} machine]
     (eval-ir-formula (lisb->ir `(bcomp-set [:x] (bmember? :x ~set-identifier))))))
 
-(defn- add-meta-data [m]
-  (assoc m :meta (-> cfg/meta-data
-                      (assoc :sets-to-transform '(:PID)))))
-
-(defn- make-mch!
+(defn make-mch!
   ([lisb]
    (let [ir (lisb->ir lisb)]
-     (add-meta-data {:ir ir
-                     :ss (state-space! (ir->ast ir))}))))
+     {:ir ir
+      :ss (state-space! (ir->ast ir))
+      :meta cfg/meta-data})))
 
 (defn- transform-invariant
   [mch]
+  {:pre [(spec/valid? :fset/mch mch)]
+   :post [(spec/valid? :fset/mch %)]}
   mch)
-
 
 (defn- transform-init
   [mch]
+  {:pre [(spec/valid? :fset/mch mch)]
+   :post [(spec/valid? :fset/mch %)]}
   mch)
 
 (defn- transform-operations
   [mch]
+  {:pre [(spec/valid? :fset/mch mch)]
+   :post [(spec/valid? :fset/mch %)]}
   mch)
 
 (defn transform
