@@ -4,8 +4,18 @@
 
 ;; Lisb IR spec
 
-(spec/def :lisb/ir map?)
 
+(spec/def :lisb/tag keyword?)
+(spec/def :lisb/name keyword?)
+(spec/def :lisb/parameters vector?)
+
+(spec/def :lisb/variant (spec/keys :req-un [:lisb/tag]))
+(spec/def :lisb/header (spec/keys :req-un [:lisb/tag :lisb/name :lisb/parameters]))
+(spec/def :lisb/clause map?)
+(spec/def :lisb/clauses (spec/or :nil nil?
+                                 :clause (spec/coll-of :lisb/clause)))
+
+(spec/def :lisb/ir (spec/keys :req-un [:lisb/tag :lisb/variant :lisb/header :lisb/clauses]))
 
 ;; Fset specs
 

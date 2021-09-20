@@ -35,9 +35,11 @@
 (defn print-transform!
   "Takes lisb code and pprints it's IR and it transformed IR."
   [lisb]
+  (println "--------------------IN")
   (printlns (lisb->b lisb))
   (println "------------------>>>>>")
-  (printlns (fset/transform scheduler)))
+  (printlns (fset/transform scheduler))
+  (println "-------------------OUT"))
 
 (defn save-b!
   [fn content]
@@ -53,5 +55,8 @@
   (transform-b-machines!)
 
   (save-b! "scheduler.mch" (lisb->b scheduler))
+
+  (pprint (lisb->ir scheduler))
+
 
   )

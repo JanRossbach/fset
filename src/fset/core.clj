@@ -15,12 +15,13 @@
   (let [{:keys [ir ss meta]} machine]
     (eval-ir-formula (lisb->ir `(bcomp-set [:x] (bmember? :x ~set-identifier))))))
 
-(defn make-mch!
-  ([lisb]
-   (let [ir (lisb->ir lisb)]
-     {:ir ir
-      :ss (state-space! (ir->ast ir))
-      :meta cfg/meta-data})))
+(defn- make-mch!
+  [lisb]
+  {:post [(spec/valid? :fset/mch %)]}
+  (let [ir (lisb->ir lisb)]
+    {:ir ir
+     :ss (state-space! (ir->ast ir))
+     :meta cfg/meta-data}))
 
 (defn- transform-invariant
   [mch]
