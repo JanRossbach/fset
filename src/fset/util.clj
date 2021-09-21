@@ -1,12 +1,18 @@
 (ns fset.util
-  (:require [com.rpl.specter :as s]))
+  (:require
+   [clojure.spec.alpha :as spec]
+   [com.rpl.specter :as s]))
 
 ;; Namespace to provide specter functionality to the transform ns.
 
 (defn get-nodes-by-tag
-  [el-tag ir]
-  (s/select [(s/walker #(= (:tag %) el-tag))] ir))
+  [tag ir]
+  {:pre [(spec/valid? :lisb/tag tag) (spec/valid? :lisb/ir ir)]
+   :post [(spec/coll-of :lisb/clause)]}
+  (s/select [(s/walker #(= (:tag %) tag))] ir))
 
 (defn update-nodes-by-tag
   [tag update-fn ir]
+  {:pre [(spec/valid? :lisb/tag tag) (spec/valid? :lisb/ir ir)]
+   :post [(spec/coll-of :lisb/clause)]}
   (s/transform [(s/walker #(= (:tag %) tag))] update-fn ir))

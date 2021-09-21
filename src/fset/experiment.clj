@@ -3,7 +3,7 @@
    [fset.config :as cfg]
    [clojure.java.io :as io]
    [fset.core :as fset]
-   [lisb.translation.util :refer [b->lisb lisb->b]]
+   [lisb.translation.util :refer [b->lisb lisb->b lisb->ir]]
    [clojure.string :as string]))
 
 ;; Namespace to run the core functions in a repl and experiment with results.
@@ -56,7 +56,6 @@
 
   (save-b! "scheduler.mch" (lisb->b scheduler))
 
-  (pprint (lisb->ir scheduler))
-
+  (clojure.pprint/pprint (lisb->ir scheduler))
 
   )
