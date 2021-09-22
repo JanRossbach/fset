@@ -3,8 +3,7 @@
    [fset.config :as cfg]
    [clojure.java.io :as io]
    [fset.core :as fset]
-   [lisb.translation.util :refer [b->lisb lisb->b lisb->ir]]
-   [clojure.string :as string]))
+   [lisb.translation.util :refer [b->lisb lisb->b lisb->ir]]))
 
 ;; Namespace to run the core functions in a repl and experiment with results.
 
@@ -27,24 +26,20 @@
         (map #(str cfg/b-source-dir %))
         (map slurp)
         (map b->lisb)
-        (map fset/transform))))
-
-(defn printlns [s]
-  (map println (string/split s #"\n")))
+        (map (partial fset/transform cfg/meta-data)))))
 
 (defn print-transform!
-  "Takes lisb code and pprints it's IR and it transformed IR."
+  "Takes lisb code and pprints it's B code and transformed B-Code."
   [lisb]
   (println "--------------------IN")
-  (printlns (lisb->b lisb))
+  (println (lisb->b lisb))
   (println "------------------>>>>>")
-  (printlns (fset/transform scheduler))
+  (println (fset/transform cfg/meta-data scheduler))
   (println "-------------------OUT"))
 
 (defn save-b!
   [fn content]
   (spit (str cfg/b-target-dir cfg/prefix fn) content))
-
 
 ;; repl with example of executing the high level commands
 (comment
@@ -58,4 +53,4 @@
 
   (clojure.pprint/pprint (lisb->ir scheduler))
 
-  )
+)

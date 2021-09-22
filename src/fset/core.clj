@@ -1,7 +1,7 @@
 (ns fset.core
   (:require
-   [fset.config :as cfg]
    [clojure.spec.alpha :as spec]
+   [fset.spec :refer :all]
    [fset.util :as util]
    [lisb.core :refer [eval-ir-formula]]
    [lisb.translation.util :refer [lisb->ir ir->ast ir->b]]
@@ -16,12 +16,12 @@
     (eval-ir-formula (lisb->ir `(bcomp-set [:x] (bmember? :x ~set-identifier))))))
 
 (defn- make-mch!
-  [lisb]
+  [lisb meta]
   {:post [(spec/valid? :fset/mch %)]}
   (let [ir (lisb->ir lisb)]
     {:ir ir
      :ss (state-space! (ir->ast ir))
-     :meta cfg/meta-data}))
+     :meta meta}))
 
 (defn- transform-invariant
   [mch]
@@ -43,8 +43,8 @@
 
 (defn transform
   "Takes lisb code and returns a desettyfied B machine as B string."
-  [lisb]
-  (->> (make-mch! lisb)
+  [meta lisb]
+  (->> (make-mch! lisb meta)
        (transform-invariant)
        (transform-init)
        (transform-operations)
