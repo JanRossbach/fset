@@ -42,7 +42,7 @@
   mch)
 
 (defn transform
-  "Takes lisb code and returns a desettyfied B machine as B string."
+  "Takes lisb code and returns a desettyfied B machine as string."
   [meta lisb]
   (->> (make-mch! lisb meta)
        (transform-invariant)

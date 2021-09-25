@@ -6,16 +6,16 @@ INVARIANT
 INITIALISATION
   etage := 4
 OPERATIONS
-  inc = 
-    PRE 
+  inc =
+    PRE
       etage<99
-    THEN 
+    THEN
       etage := etage + 1
     END ;
-  dec = 
-    PRE 
+  dec =
+    PRE
       etage>0
-    THEN 
+    THEN
       etage := etage - 1
     END
 END
