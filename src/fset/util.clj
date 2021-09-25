@@ -16,3 +16,15 @@
   {:pre [(spec/valid? :lisb/tag tag) (spec/valid? :lisb/ir ir)]
    :post [(spec/coll-of :lisb/clause)]}
   (s/transform [(s/walker #(= (:tag %) tag))] update-fn ir))
+
+(defn clear-vars
+  [ir]
+  (update-nodes-by-tag :variables
+                       (fn [m] (assoc m :identifiers '()))
+                       ir))
+(defn add-vars
+  [ir vars]
+  (update-nodes-by-tag :variables
+                       (fn [m]
+                         (assoc m :identifiers (concat (:identifiers m) vars)))
+                       ir))

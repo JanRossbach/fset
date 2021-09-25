@@ -2,6 +2,7 @@
   (:require
    [clojure.spec.alpha :as spec]
    [fset.spec :refer :all]
+   [fset.config :as cfg]
    [fset.util :as util]
    [lisb.core :refer [eval-ir-formula]]
    [lisb.translation.util :refer [lisb->ir ir->ast ir->b]]
@@ -29,6 +30,19 @@
    :post [(spec/valid? :fset/mch %)]}
   mch)
 
+
+;; (def scheduler-mch (make-mch! (read-string (slurp "resources/machines/lisb/source/scheduler.edn")) cfg/meta-data))
+
+(defn- transform-variables
+  [mch]
+  {:pre [(spec/valid? :fset/mch mch)]
+   :post [(spec/valid? :fset/mch %)]}
+  (let [{:keys [ir ss meta]} mch
+        new-vars '(:a1 :a2 :r1 :r2 :w1 :w2)]
+    {:ir (-> ir util/clear-vars (util/add-vars new-vars))
+     :ss ss
+     :meta meta}))
+
 (defn- transform-init
   [mch]
   {:pre [(spec/valid? :fset/mch mch)]
@@ -46,6 +60,7 @@
   [meta lisb]
   (->> (make-mch! lisb meta)
        (transform-invariant)
+       (transform-variables)
        (transform-init)
        (transform-operations)
        (:ir)
