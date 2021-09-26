@@ -2,8 +2,9 @@
   (:require
    [fset.config :as cfg]
    [clojure.java.io :as io]
+   [fset.util :as util]
    [fset.core :as fset]
-   [lisb.translation.util :refer [b->lisb lisb->b lisb->ir]]))
+   [lisb.translation.util :refer [b->lisb lisb->b lisb->ir ir->b]]))
 
 ;; Namespace to run the core functions in a repl and experiment with results.
 
@@ -14,6 +15,10 @@
        (read-string)))
 
 (def scheduler (file->lisb! (str cfg/lisb-source-dir "scheduler.edn")))
+
+(def scheduler-ir (lisb->ir scheduler))
+
+(def scheduler-mch (fset/make-mch! (read-string (slurp "resources/machines/lisb/source/scheduler.edn")) cfg/meta-data))
 
 (def lift (file->lisb! (str cfg/lisb-source-dir "Lift.edn")))
 
@@ -49,8 +54,15 @@
 
   (transform-b-machines!)
 
-  (save-b! "scheduler.mch" (lisb->b scheduler))
+  (save-b! "scheduler.mch" scheduler-ir)
 
-  (clojure.pprint/pprint (lisb->ir scheduler))
+  (clojure.pprint/pprint scheduler-ir)
 
-)
+  (ir->b (util/clear-sets scheduler-ir))
+
+  (util/clear-sets {:clauses '({:tag :sets
+                                :identifiers (:PID)}
+                               {:tag variables
+                                :identifiers (:hello)})})
+
+  )

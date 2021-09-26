@@ -18,6 +18,11 @@
                        (fn [m] (assoc m :identifiers nil))
                        ir))
 
+(defn clear-sets
+  "Deletes the sets clause from the IR"
+  [ir]
+  (s/setval [(s/walker #(= (:tag %) :sets))] s/NONE ir))
+
 (defn add-identifiers
   [ids m]
   (let [current-ids (:identifiers m)]
