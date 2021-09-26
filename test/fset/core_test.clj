@@ -11,7 +11,7 @@
 
 (deftest empty-machine-test
   (testing "The empty machine should not be changed in any way"
-    (is (= (transform empty-cfg empty-machine-lisb) empty-machine-str))))
+    (is (= empty-machine-str (transform empty-cfg empty-machine-lisb)))))
 
 
 (def scheduler-cfg {:deferred-size 3 :max-transform-size 10})
@@ -22,4 +22,7 @@
 
 (deftest scheduler-machine-test
   (testing "The scheduler machine should be changed in some way"
-    (is (not= (transform scheduler-cfg scheduler-machine-lisb) scheduler-machine-str))))
+    (is (not= scheduler-machine-str (transform scheduler-cfg scheduler-machine-lisb)))))
+
+
+(transform scheduler-cfg scheduler-machine-lisb)

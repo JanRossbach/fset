@@ -27,3 +27,15 @@
                                 :opt-un [:fset/sets-to-transform]))
 (spec/def :lisb/ss #(= (type %) de.prob.statespace.StateSpace))
 (spec/def :fset/mch (spec/keys :req-un [:lisb/ir :lisb/ss :fset/meta]))
+
+
+(def variables-ir
+  {:tag :machine,
+   :variant {:tag :machine-variant}
+   :header {:tag :machine-header :name :scheduler :parameters []}
+   :clauses
+   '({:tag :varaibles
+      :identifiers '(:active :ready :waiting)})})
+
+
+(spec/explain :lisb/ir variables-ir)

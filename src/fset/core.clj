@@ -33,13 +33,12 @@
 
 ;; (def scheduler-mch (make-mch! (read-string (slurp "resources/machines/lisb/source/scheduler.edn")) cfg/meta-data))
 
-(defn- transform-variables
+(defn- remove-old-variables
   [mch]
   {:pre [(spec/valid? :fset/mch mch)]
    :post [(spec/valid? :fset/mch %)]}
-  (let [{:keys [ir ss meta]} mch
-        new-vars '(:a1 :a2 :r1 :r2 :w1 :w2)]
-    {:ir (-> ir util/clear-vars (util/add-vars new-vars))
+  (let [{:keys [ir ss meta]} mch]
+    {:ir (-> ir util/clear-vars)
      :ss ss
      :meta meta}))
 
@@ -60,7 +59,7 @@
   [meta lisb]
   (->> (make-mch! lisb meta)
        (transform-invariant)
-       (transform-variables)
+       (remove-old-variables)
        (transform-init)
        (transform-operations)
        (:ir)
