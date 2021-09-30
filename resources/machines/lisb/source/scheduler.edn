@@ -1,7 +1,7 @@
 (machine
  (machine-variant)
  (machine-header :scheduler [])
- (sets (deferred-set :PID))
+ (sets (enumerated-set :PID :PID1 :PID2 :PID3))
  (variables :active :ready :waiting)
  (invariant (and
              (contains? (pow :PID) :active)

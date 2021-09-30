@@ -51,7 +51,7 @@ resp <-- precurrentquery(rr) =
      END;
 
 bb <-- currentquery(rr) =
-   PRE rr : READER & rr : dom(reading)
+   PRE rr : READER & rr : dom(reading) & bb : BOOK
    THEN bb := copyof(reading(rr))
    END;
 

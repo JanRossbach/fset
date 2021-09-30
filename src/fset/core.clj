@@ -29,13 +29,12 @@
    :post [(spec/valid? :fset/mch %)]}
   mch)
 
-
 (defn- remove-old-variables-and-sets
   [mch]
   {:pre [(spec/valid? :fset/mch mch)]
    :post [(spec/valid? :fset/mch %)]}
   (let [{:keys [ir ss meta]} mch]
-    {:ir (-> ir util/clear-vars util/clear-sets)
+    {:ir (-> ir util/clear-sets)
      :ss ss
      :meta meta}))
 
