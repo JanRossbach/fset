@@ -14,7 +14,7 @@
       :identifiers (:active :ready :waiting)})})
 
 (deftest variables-test
-  (testing "Adding and clearing variables from the IR"
+  (testing "Adding variables to the IR"
     (is (= {:clauses '({:tag :variables
                         :identifiers (:active :ready :waiting :hello :world)})}
            (util/add-vars variables-ir '(:hello :world)))))

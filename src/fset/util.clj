@@ -5,9 +5,10 @@
 ;; Namespace to provide specter functionality to the transform ns.
 
 (def CLAUSES (s/path [:clauses]))
-(def VARIABLES (s/path [CLAUSES #(= (:tag %) :variables) :identifiers]))
+(def VARIABLES (s/path [CLAUSES s/ALL #(= (:tag %) :variables) :identifiers]))
 (def SETS (s/path [CLAUSES #(= (:tag %) :sets) :set-definitions s/ALL]))
-(def INIT (s/path [CLAUSES #(= (:tag %) :init)]))
+(def INIT (s/path [CLAUSES s/ALL #(= (:tag %) :init)]))
+(def INVAR (s/path [CLAUSES s/ALL #(= (:tag %) :invariants)]))
 
 (defn add-clause
   [ir new-clause]
@@ -27,7 +28,6 @@
    :identifiers (list s)
    :values (list t)})
 
-;; TODO Refactor to just add one init with AFTER-ELEM Navigator
 (defn add-inits
   "Takes an lisb IR and a seq that contains vector pairs of
   identifiers and values to be added to the init clause."
@@ -36,8 +36,8 @@
         prev-init (get-init ir)]
     (cond
       (nil? prev-init) (add-clause ir {:tag :init,
-                                       :subsitution {:tag :parallel-substitution
-                                                     :substitutions (list new-assigns)}})
+                                       :substitution {:tag :parallel-substitution
+                                                     :substitutions new-assigns}})
       (= (:tag (:substitution prev-init)) :assign) (s/setval [INIT]
                                                              {:tag :init
                                                               :substitution {:tag :parallel-substitution
@@ -70,10 +70,28 @@
   [ir]
   (s/setval [(s/walker #(= (:tag %) :sets))] s/NONE ir))
 
+(defn get-assign-by-id
+  [ir id]
+  (s/select [(s/walker #(= (:tag %) :assign))
+             #(= (:identifiers %) (list id))]
+            ir))
+
 (defn rm-init-by-id
   [ir id]
-  ir)
+  (s/setval [INIT :substitution :substitutions s/ALL #(= (:identifiers %) (list id))] s/NONE ir))
 
-(defn rm-invar-by-id
+(defn get-invar
+  [ir]
+  (s/select [INVAR] ir))
+
+(defn rm-typedef-by-id
   [ir id]
-  ir)
+  (s/setval [INVAR :predicate :predicates s/ALL #(= (:element %) id)] s/NONE ir))
+
+(defn replace-calls-by-arg
+  [ir id]
+  (s/transform [(s/walker #(= (:tag %) :call)) #(= (:f %) id)] #(first (:args %)) ir))
+
+(defn rm-var-by-id
+  [ir id]
+  (s/setval [VARIABLES s/ALL #(= id %)] s/NONE ir))

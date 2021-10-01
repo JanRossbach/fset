@@ -1,35 +1,22 @@
 (ns fset.extract
   (:require
-   [com.rpl.specter :as s]
    [fset.util :as util]))
 
-
-
-(defn extract-fun
+(defn- extract-fun
   "Extracts the variables from a single function. Returns the changed IR"
   [ir f]
-  (let [rules (first (s/select [(s/walker #(= (:tag %) :assign))
-                                #(= (:identifiers %) (list f))
-                                :values
-                                s/FIRST] ir))
+  (let [assign (first (util/get-assigns-by-id ir f))
+        rules (apply vec (:values assign))
         vars (map first rules)]
     (-> ir
-        (util/set-vars vars)
+        (util/add-vars vars)
         (util/add-inits rules)
-        (util/clear-sets)
+        (util/rm-var-by-id f)
         (util/rm-init-by-id f)
-        (util/rm-invar-by-id f))))
+        (util/rm-typedef-by-id f)
+        (util/replace-calls-by-arg f))))
 
 
-(defn extract-vars
-  "Takes an IR and a seq of function identifiers and extracts the function
-  rules into separate variables."
-  [ir fs]
-  (if (or (not (seq? fs)) (empty? fs))
-    ir
-    (loop [r ir
-           f (first fs)
-           s fs]
-      (if (empty? s)
-        r
-        (recur (extract-fun r f) (first s) (rest s))))))
+(defn extract
+  [ir & fs]
+  (reduce extract-fun ir fs))

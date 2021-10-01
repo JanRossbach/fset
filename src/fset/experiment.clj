@@ -2,12 +2,12 @@
   (:require
    [fset.config :as cfg]
    [clojure.java.io :as io]
-   [fset.extract :refer [extract-vars]]
    [fset.util :as util]
    [fset.core :as fset]
    [clojure.pprint :as p]
    [lisb.core :refer [eval-ir-formula]]
-   [lisb.translation.util :refer [b->lisb lisb->b lisb->ir ir->b]]))
+   [lisb.translation.util :refer [b->lisb lisb->b lisb->ir ir->b]]
+   [fset.extract :as ex]))
 
 ;; Namespace to run the core functions in a repl and experiment with results.
 
@@ -52,24 +52,35 @@
 
 ;; repl with example of executing the high level commands
 (comment
-(print-transform! scheduler)
+  (print-transform! scheduler)
 
-(transform-b-machines!)
+  (transform-b-machines!)
 
-(save-b! "scheduler.mch" scheduler-ir)
+  (save-b! "scheduler.mch" scheduler-ir)
 
-(clojure.pprint/pprint scheduler-ir)
+  (clojure.pprint/pprint scheduler-ir)
 
-(ir->b (util/clear-sets scheduler-ir))
+  (ir->b (util/clear-sets scheduler-ir))
 
-(util/clear-sets {:clauses '({:tag :sets
-                              :identifiers (:PID)}
-                             {:tag variables
-                              :identifiers (:hello)})})
+  (util/clear-sets {:clauses '({:tag :sets
+                                :identifiers (:PID)}
+                               {:tag variables
+                                :identifiers (:hello)})})
 
-(eval-ir-formula (:ss scheduler-mch) (lisb->ir '(comp-set [:x] (member? :x :PID))))
+  (eval-ir-formula (:ss scheduler-mch) (lisb->ir '(comp-set [:x] (member? :x :PID))))
 
-(clojure.pprint/pprint (:ir scheduler-mch))
+  (clojure.pprint/pprint (:ir scheduler-mch))
 
-(spit "resources/machines/b/target/func_extract.mch" (ir->b (extract-vars fe-ir '(:p))))
-)
+  (spit "resources/machines/b/target/func_extract.mch" (ir->b (ex/extract fe-ir :p)))
+
+  (p/pprint (ex/extract fe-ir :p))
+
+  (util/get-assigns-by-id fe-ir :p)
+
+  (util/rm-typedef-by-id fe-ir :p)
+
+  (p/pprint (ex/extract fe-ir :p))
+
+  (save-b! "func_extract.mch" (ir->b (ex/extract fe-ir :p)))
+
+  )
