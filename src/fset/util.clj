@@ -9,6 +9,7 @@
 (def SETS (s/path [CLAUSES #(= (:tag %) :sets) :set-definitions s/ALL]))
 (def INIT (s/path [CLAUSES s/ALL #(= (:tag %) :init)]))
 (def INVAR (s/path [CLAUSES s/ALL #(= (:tag %) :invariants)]))
+(def PAR-ASSIGNS (s/path [INIT :substitution :substitutions s/ALL]))
 
 (defn add-clause
   [ir new-clause]
@@ -22,7 +23,7 @@
   [ir]
   (first (s/select [INIT] ir)))
 
-(defn- make-init-ir
+(defn- make-assign-ir
   [[s t]]
   {:tag :assign
    :identifiers (list s)
@@ -32,9 +33,11 @@
   "Takes an lisb IR and a seq that contains vector pairs of
   identifiers and values to be added to the init clause."
   [ir inits]
-  (let [new-assigns (map make-init-ir inits)
+  (let [new-assigns (map make-assign-ir inits)
         prev-init (get-init ir)]
     (cond
+      (and (nil? prev-init) (= (count inits) 1)) (add-clause ir {:tag :init
+                                                                 :substitution (first new-assigns)})
       (nil? prev-init) (add-clause ir {:tag :init,
                                        :substitution {:tag :parallel-substitution
                                                      :substitutions new-assigns}})
@@ -76,9 +79,33 @@
              #(= (:identifiers %) (list id))]
             ir))
 
+(defn count-inits
+  [ir]
+  (let [init-clause (get-init ir)]
+    (cond
+      (nil? init-clause) 0
+      (= :assign (:tag (:substitution init-clause))) 1
+      :else (count (:substitutions (:substitution init-clause))))))
+
 (defn rm-init-by-id
   [ir id]
-  (s/setval [INIT :substitution :substitutions s/ALL #(= (:identifiers %) (list id))] s/NONE ir))
+  (let [init (get-init ir)
+        n (count-inits ir)]
+    (cond
+      (= n 0) ir
+      (and (= n 1) (= id (first (:identifiers (:substitution init))))) (s/setval [INIT] s/NONE ir)
+      (= n 1) ir
+      (and  (= n 2) (seq (s/select [PAR-ASSIGNS #(= (:identifiers %) (list id))] ir)))
+      (s/setval [INIT] {:tag :init
+                        :substitution (first (s/select
+                                              [PAR-ASSIGNS #(not= (:identifiers %) id)]
+                                              ir))} ir)
+      (= n 2) ir
+      (> n 2) (s/setval [PAR-ASSIGNS #(= (:identifiers %) (list id))] s/NONE ir))))
+
+(defn rm-inits-by-id
+  [ir & ids]
+  (reduce rm-init-by-id ir ids))
 
 (defn get-invar
   [ir]

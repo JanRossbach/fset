@@ -6,7 +6,7 @@
    [fset.core :as fset]
    [clojure.pprint :as p]
    [lisb.core :refer [eval-ir-formula]]
-   [lisb.translation.util :refer [b->lisb lisb->b lisb->ir ir->b]]
+   [lisb.translation.util :refer [b->lisb lisb->b lisb->ir ir->b b->ir]]
    [fset.extract :as ex]))
 
 ;; Namespace to run the core functions in a repl and experiment with results.
@@ -81,6 +81,13 @@
 
   (p/pprint (ex/extract fe-ir :p))
 
+  (b->ir)
+
   (save-b! "func_extract.mch" (ir->b (ex/extract fe-ir :p)))
+
+  (ir->b {:tag :machine, :variant {:tag :machine-variant}, :header {:tag :machine-header, :name :Empty, :parameters []}, :clauses '({:tag :init
+                                                                                                                                     :substitution {:tag :parallel-substitution
+                                                                                                                                                    :substitutions ()}})})
+
 
   )
