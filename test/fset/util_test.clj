@@ -3,11 +3,6 @@
    [clojure.test :refer [deftest testing is]]
    [fset.util :as util]))
 
-(def empty-mch-ir
-  {:tag :machine
-   :variant {:tag :machine-variant}
-   :header {:tag :machine-header, :name :Empty, :parameters []}, :clauses nil})
-
 (def variables-ir
   {:clauses
    '({:tag :variables
@@ -22,3 +17,32 @@
     (is (= {:clauses '({:tag :variables
                         :identifiers (:hello :world)})}
            (util/add-vars {:clauses '()} '(:hello :world))))))
+
+(def init-ir
+  {:clauses
+   '({:tag :init
+      :substitution {:tag :parallel-substitution
+                     :substitutions ({:tag :assign :identifiers (:q) :values (7)})}})})
+
+
+(deftest init-test
+  (testing "Getting"
+    (is (= {:tag :init
+            :substitution {:tag :parallel-substitution
+                           :substitutions '({:tag :assign :identifiers (:q) :values (7)})}}
+           (util/get-init init-ir)))
+    (is (empty? (util/get-init variables-ir))))
+  (testing "Adding"
+    (is (= {:clauses
+            '({:tag :init
+               :substitution {:tag :parallel-substitution
+                              :substitutions ({:tag :assign :identifiers (:q) :values (7)}
+                                              {:tag :assign :identifiers (:p) :values (3)})}})}
+           (util/add-inits init-ir [[:p 3]])))
+    (is (= {:clauses
+            '({:tag :init
+               :substitution {:tag :parallel-substitution
+                              :substitutions ({:tag :assign :identifiers (:q) :values (7)}
+                                              {:tag :assign :identifiers (:p) :values (3)})}})}
+           (util/add-inits {:clauses '({:tag :init
+                                        :substitution {:tag :assign :identifiers (:q) :values (7)}})} [[:p 3]])))))

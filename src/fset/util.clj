@@ -70,7 +70,7 @@
   [ir]
   (s/setval [(s/walker #(= (:tag %) :sets))] s/NONE ir))
 
-(defn get-assign-by-id
+(defn get-assigns-by-id
   [ir id]
   (s/select [(s/walker #(= (:tag %) :assign))
              #(= (:identifiers %) (list id))]
