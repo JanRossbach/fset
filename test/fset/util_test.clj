@@ -71,4 +71,4 @@
     (is (= no-init-ir (util/rm-init-by-id no-init-ir :p)))
     (is (= multiple-init-ir (util/rm-init-by-id multiple-init-ir :x)))
     (is (= single-init-ir (util/rm-init-by-id single-init-ir :r)))
-    (is (= single-init-ir (util/rm-inits-by-id more-init-ir :p :r)))))
+    (is (= single-init-ir (util/rm-inits-by-id more-init-ir [:p :r])))))

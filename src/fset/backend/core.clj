@@ -1,4 +1,4 @@
-(ns fset.backend
+(ns fset.backend.core
   (:require [clojure.core.matrix :as m]))
 
 (m/set-current-implementation :vectorz) ;; switch to vectorz vectors in order to improve performance
@@ -12,3 +12,10 @@
 (m/mmul
  (m/array [[2 2] [3 3]])
  (m/array [[4 4] [5 5]])) ; => [[18 18] [27 27]]
+
+(defrecord problem [universe relations formula])
+
+(def kp (->problem #{:a1 :a2 :a3} [#{} #{} #{}] ()))
+
+(defn solve [^problem p]
+  (:universe p))

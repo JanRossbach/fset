@@ -5,10 +5,11 @@
 ;; Namespace to provide specter functionality to the transform ns.
 
 (def CLAUSES (s/path [:clauses]))
-(def VARIABLES (s/path [CLAUSES s/ALL #(= (:tag %) :variables) :identifiers]))
-(def SETS (s/path [CLAUSES #(= (:tag %) :sets) :set-definitions s/ALL]))
-(def INIT (s/path [CLAUSES s/ALL #(= (:tag %) :init)]))
-(def INVAR (s/path [CLAUSES s/ALL #(= (:tag %) :invariants)]))
+(defn CLAUSE [^clojure.lang.Keyword name] (s/path [CLAUSES s/ALL #(= (:tag %) name)]))
+(def VARIABLES (s/path [(CLAUSE :variables) :identifiers]))
+(def SETS (s/path [(CLAUSE :sets) :set-definitions s/ALL]))
+(def INIT (s/path [(CLAUSE :init)]))
+(def INVAR (s/path [(CLAUSE :invariant)]))
 (def PAR-ASSIGNS (s/path [INIT :substitution :substitutions s/ALL]))
 
 (defn add-clause
@@ -104,7 +105,7 @@
       (> n 2) (s/setval [PAR-ASSIGNS #(= (:identifiers %) (list id))] s/NONE ir))))
 
 (defn rm-inits-by-id
-  [ir & ids]
+  [ir ids]
   (reduce rm-init-by-id ir ids))
 
 (defn get-invar

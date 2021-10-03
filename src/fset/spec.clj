@@ -2,7 +2,7 @@
   (:require
    [clojure.spec.alpha :as spec]))
 
-;; Lisb IR spec
+;; lisb specs
 
 
 (spec/def :lisb/tag keyword?)
@@ -17,25 +17,12 @@
 
 (spec/def :lisb/ir (spec/keys :req-un [:lisb/tag :lisb/variant :lisb/header :lisb/clauses]))
 
-;; Fset specs
+;; fset specs
 
 (spec/def :fset/deferred-size number?)
 (spec/def :fset/max-transform-size number?)
 (spec/def :fset/sets-to-transform (spec/coll-of keyword?))
+(spec/def :fset/universe (spec/coll-of :fset/atom))
 
 (spec/def :fset/meta (spec/keys :req-un [:fset/deferred-size :fset/max-transform-size]
-                                :opt-un [:fset/sets-to-transform]))
-(spec/def :lisb/ss #(= (type %) de.prob.statespace.StateSpace))
-(spec/def :fset/mch (spec/keys :req-un [:lisb/ir :lisb/ss :fset/meta]))
-
-
-(def variables-ir
-  {:tag :machine,
-   :variant {:tag :machine-variant}
-   :header {:tag :machine-header :name :scheduler :parameters []}
-   :clauses
-   '({:tag :varaibles
-      :identifiers '(:active :ready :waiting)})})
-
-
-(spec/explain :lisb/ir variables-ir)
+                                :opt-un [:fset/sets-to-transform :fset/universe]))

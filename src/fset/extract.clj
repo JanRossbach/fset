@@ -3,7 +3,6 @@
    [fset.util :as util]))
 
 (defn- extract-fun
-  "Extracts the variables from a single function. Returns the changed IR"
   [ir f]
   (let [assign (first (util/get-assigns-by-id ir f))
         rules (apply vec (:values assign))
@@ -18,5 +17,7 @@
 
 
 (defn extract
+  "Extracts the variables from all given functions. Takes an IR and a variable amount of function ids.
+  Returns the updated IR with extracted variables."
   [ir & fs]
   (reduce extract-fun ir fs))
