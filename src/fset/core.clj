@@ -1,48 +1,38 @@
 (ns fset.core
   (:require
-   [clojure.spec.alpha :as spec]
-   [fset.util :as util]
-   [lisb.translation.util :refer [ir->ast ir->b]]
-   [lisb.prob.animator :refer [state-space!]]))
+   [clojure.core.match :refer [match]]
+   [fset.predicates :refer [transform-predicate]]
+   [com.rpl.specter :as s]
+   [fset.util :as util]))
 
-;; High level public interface of the app. Ties together the lisb,  config and transform namespaces to provide all required functionality.
 
-(defrecord machine [ir ^de.prob.statespace.StateSpace ss meta])
+(defrecord universe [ir ^clojure.lang.Keyword set-to-rewrite ^long max-size ^long deferred-set-size variables])
 
-(defn- transform-invariant
-  [^machine machine]
-  machine)
+(defn transform-variables
+  [^universe u]
+  u)
 
-(defn- transform-variables
-  [^machine machine]
-  (let [{:keys [ir ss meta]} machine
-        universe (:universe meta)]
-    (->machine (-> ir)
-               ss
-               meta)))
+(defn transform-properties
+  [^universe u]
+  (let [properties (util/get-properties u)]
+    (if properties
+      (util/set-properties u {:tag :properties
+                              :predicate (transform-predicate u (:predicate properties))})
+      u)))
 
-(defn- transform-init
-  [^machine machine]
-  machine)
-
-(defn- transform-operations
-  [^machine machine]
-  machine)
-
-(defn- analyse
-  [{:keys [ir ss meta]}]
-  (let [new-meta meta]
-    (->machine ir ss new-meta)))
+(defn transform-invariant
+  [^universe u]
+  (let [invariant (util/get-invariant u)]
+    (if invariant
+      (util/set-invariant u {:tag :invariants
+                              :predicate (transform-predicate u (:predicate invariant))})
+      u)))
 
 (defn transform
-  "Takes an IR and returns a desettyfied B machine as string."
-  [ir meta]
-  {:pre [(spec/valid? :lisb/ir ir) (spec/valid? :fset/meta meta)]
-   :post [(spec/valid? :lisb/ir %)]}
-  (->> (->machine ir (state-space! (ir->ast ir)) meta)
-       (analyse)
-       (transform-invariant)
-       (transform-init)
-       (transform-operations)
-       (transform-variables)
-       (:ir)))
+  "The entry Function that does the transformation."
+  [max-size deferred-set-size ir set-to-rewrite] ;; Parameter order is chosen to make it easy to partial away the config stuff.
+  (-> (->universe ir set-to-rewrite max-size deferred-set-size (util/generate-variables ir))
+      (transform-variables)
+      (transform-invariant)
+      (transform-properties)
+      (get :ir)))

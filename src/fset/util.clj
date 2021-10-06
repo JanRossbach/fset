@@ -4,13 +4,15 @@
 
 ;; Namespace to provide specter functionality to the transform ns.
 
-(def CLAUSES (s/path [:clauses]))
-(defn CLAUSE [^clojure.lang.Keyword name] (s/path [CLAUSES s/ALL #(= (:tag %) name)]))
+(defn TAG [t] (s/path #(= (:tag %) t)))
+(def CLAUSES (s/if-path (s/must :ir) [:ir :clauses] [:clauses]))
+(defn CLAUSE [^clojure.lang.Keyword name] (s/path [CLAUSES s/ALL (TAG name)]))
 (def VARIABLES (s/path [(CLAUSE :variables) :identifiers]))
 (def SETS (s/path [(CLAUSE :sets) :set-definitions s/ALL]))
 (def INIT (s/path [(CLAUSE :init)]))
-(def INVAR (s/path [(CLAUSE :invariant)]))
+(def INVAR (s/path [(CLAUSE :invariants)]))
 (def PAR-ASSIGNS (s/path [INIT :substitution :substitutions s/ALL]))
+(def PROPERTIES (s/path [(CLAUSE :properties)]))
 
 (defn add-clause
   [ir new-clause]
@@ -108,9 +110,13 @@
   [ir ids]
   (reduce rm-init-by-id ir ids))
 
-(defn get-invar
+(defn get-invariant
   [ir]
-  (s/select [INVAR] ir))
+  (first (s/select [INVAR] ir)))
+
+(defn set-invariant
+  [u new-invar]
+  (s/setval [INVAR] new-invar u))
 
 (defn rm-typedef-by-id
   [ir id]
@@ -123,3 +129,21 @@
 (defn rm-var-by-id
   [ir id]
   (s/setval [VARIABLES s/ALL #(= id %)] s/NONE ir))
+
+(defn get-type
+  [ir var]
+  (s/select [INVAR :predicate :predicates s/ALL (TAG :member) #(= (:element %) var) :set] ir))
+
+(defn generate-variables
+  "Statically analyzes the IR and generates a map of bindings from variable id's that need to be rewritten to set of boolean ids corresponding to the variable in the new machine."
+  [ir]
+  (let [m (s/select [] ir)]
+    m))
+
+(defn get-properties
+  [u]
+  (s/select [PROPERTIES] u))
+
+(defn set-properties
+  [u new-properties]
+  (s/setval [PROPERTIES] new-properties u))
