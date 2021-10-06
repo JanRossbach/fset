@@ -1,5 +1,4 @@
-(ns fset.predicates
-  (:require [fset.util :as util]))
+(ns fset.predicates)
 
 (defmulti transform-predicate "Takes the universe and a predicate and returns the transformed predicates. Dispatches on the tag of the predicate."
   (fn [_ p] (:tag p)))
@@ -12,7 +11,3 @@
   [u p]
   {:tag :and
    :predicates (map (partial transform-predicate u) (:predicates p))})
-
-
-
-(transform-predicate {} predicate)
