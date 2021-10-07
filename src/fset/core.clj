@@ -1,16 +1,19 @@
 (ns fset.core
   (:require
-   [clojure.core.match :refer [match]]
    [fset.predicates :refer [transform-predicate]]
-   [com.rpl.specter :as s]
    [fset.util :as util]))
 
 
 (defrecord universe [ir ^clojure.lang.Keyword set-to-rewrite ^long max-size ^long deferred-set-size variables])
 
+
 (defn transform-variables
   [^universe u]
-  u)
+  (let [new-vars (util/get-new-var-ids u)
+        old-vars (util/get-old-var-ids u)]
+    (-> u
+        (util/rm-vars old-vars)
+        (util/add-vars new-vars))))
 
 (defn transform-properties
   [^universe u]

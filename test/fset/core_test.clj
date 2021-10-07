@@ -16,4 +16,4 @@
 
 (deftest scheduler-machine-test
   (testing "The scheduler machine should be changed in some way"
-    (is (= scheduler-ir (transform scheduler-ir :PID)))))
+    (is (not= scheduler-ir (transform scheduler-ir :PID)))))

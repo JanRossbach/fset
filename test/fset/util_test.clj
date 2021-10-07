@@ -20,6 +20,10 @@
 (def no-variables-ir
   {:clauses '()})
 
+(def one-variable-ir
+  {:clauses '({:tag :variables
+               :identifiers (:active)})})
+
 (def some-variables-ir
   {:clauses
    '({:tag :variables
@@ -29,11 +33,17 @@
                                     :identifiers (:active :ready :waiting :hello :world)})})
 
 (deftest variable-utils-test
+  (testing "Getting"
+    (is (= '(:active :ready :waiting) (util/get-vars some-variables-ir)))
+    (is (empty? (util/get-vars no-variables-ir))))
+  (testing "Setting"
+    (is (= one-variable-ir (util/set-vars some-variables-ir '(:active)))))
   (testing "Adding variables"
     (is (= more-variables-ir (util/add-vars some-variables-ir '(:hello :world))))
     (is (= some-variables-ir (util/add-vars no-variables-ir '(:active :ready :waiting))))
-    (is (= some-variables-ir (util/set-vars more-variables-ir '(:active :ready :waiting))))))
-
+    (is (= some-variables-ir (util/set-vars more-variables-ir '(:active :ready :waiting)))))
+  (testing "Removing"
+    (is (= no-variables-ir (util/rm-var-by-id one-variable-ir :active)))))
 
 (def no-init-ir {:clauses '()})
 (def single-init-ir {:clauses
@@ -89,7 +99,14 @@
     (is (= single-init-ir (util/rm-init-by-id single-init-ir :r)))
     (is (= single-init-ir (util/rm-inits-by-id more-init-ir [:p :r])))))
 
+(def no-invar-u {:ir {:clauses '()} :a 3})
+(def invar-u {:ir {:clauses '({:tag :invariants
+                               :b 4})} :a 3})
 
 (deftest invar-utils-test
   (testing "Getting"
-    ()))
+    (is (nil? (util/get-invariant no-invar-u)))
+    (is (seq (util/get-invariant invar-u))))
+  (testing "Setting"
+    (is (= invar-u (util/set-invariant no-invar-u {:tag :invariants
+                                                   :b 4})))))

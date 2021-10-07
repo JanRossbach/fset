@@ -14,6 +14,16 @@
 (def PAR-ASSIGNS (s/path [INIT :substitution :substitutions s/ALL]))
 (def PROPERTIES (s/path [(CLAUSE :properties)]))
 (def TYPEDEFS (s/path [INVAR :predicate (s/if-path (s/must :predicates) [:predicates s/ALL] s/STAY)]))
+(def NEW-VARS (s/path [:variables s/MAP-VALS s/ALL]))
+(def OLD-VARS (s/path [:variables s/MAP-KEYS]))
+
+(defn get-new-var-ids
+  [u]
+  (s/select [NEW-VARS] u))
+
+(defn get-old-var-ids
+  [u]
+  (s/select [OLD-VARS] u))
 
 (defn get-init
   [u]
@@ -41,6 +51,16 @@
     (if (empty? old-vars)
       (add-clause u {:tag :variables :identifiers vars})
       (s/setval [VARIABLES] (concat old-vars vars) u))))
+
+(defn rm-var-by-id
+  [u id]
+  (if (= 1 (count (get-vars u)))
+    (s/setval [(CLAUSE :variables)] s/NONE u)
+    (s/setval [VARIABLES s/ALL #(= id %)] s/NONE u)))
+
+(defn rm-vars
+  [u ids]
+  (reduce rm-var-by-id u ids))
 
 (defn- make-assign-ir
   [[s t]]
@@ -111,7 +131,9 @@
 
 (defn set-invariant
   [u new-invar]
-  (s/setval [INVAR] new-invar u))
+  (if (nil? (get-invariant u))
+    (add-clause u new-invar)
+    (s/setval [INVAR] new-invar u)))
 
 (defn rm-typedef-by-id
   [u id]
@@ -121,19 +143,16 @@
   [u id]
   (s/transform [(s/walker #(= (:tag %) :call)) #(= (:f %) id)] #(first (:args %)) u))
 
-(defn rm-var-by-id
-  [u id]
-  (s/setval [VARIABLES s/ALL #(= id %)] s/NONE u))
 
 (defn get-type
   [u var]
   (s/select [TYPEDEFS (TAG :member) #(= (:element %) var) :set] u))
 
+;; FIXME
 (defn generate-variables
   "Statically analyzes the IR and generates a map of bindings from variable id's that need to be rewritten to set of boolean ids corresponding to the variable in the new machine."
-  [u]
-  (let [m (s/select [] u)]
-    m))
+  [_]
+  {:active #{:active_PID1 :active_PID2 :active_PID3}})
 
 (defn get-properties
   [u]
@@ -141,7 +160,9 @@
 
 (defn set-properties
   [u new-properties]
-  (s/setval [PROPERTIES] new-properties u))
+  (if (nil? (get-properties u))
+    (add-clause u new-properties)
+    (s/setval [PROPERTIES] new-properties u)))
 
 (defn add-typedef
   [u [v s]]
