@@ -1,6 +1,7 @@
 (ns fset.extract-test
   (:require
    [fset.extract :as ex]
+   [fset.util :as util]
    [lisb.translation.util :refer [b->ir ir->b]]
    [clojure.test :refer [deftest is testing]]))
 
@@ -32,3 +33,7 @@ END")
 (deftest example-test
   (testing "The translated example is equal to the target string"
    (is (= example-target-ir (ex/extract example-ir :p)))))
+
+(clojure.pprint/pprint (ex/extract example-ir '(:p) {:tag :interval :from 5 :to 6}))
+
+(clojure.pprint/pprint example-ir)

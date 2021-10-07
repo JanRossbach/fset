@@ -13,18 +13,34 @@
 (def INVAR (s/path [(CLAUSE :invariants)]))
 (def PAR-ASSIGNS (s/path [INIT :substitution :substitutions s/ALL]))
 (def PROPERTIES (s/path [(CLAUSE :properties)]))
-
-(defn add-clause
-  [ir new-clause]
-  (s/setval [CLAUSES s/BEFORE-ELEM] new-clause ir))
-
-(defn add-clause-after
-  [ir new-clause]
-  (s/setval [CLAUSES s/AFTER-ELEM] new-clause ir))
+(def TYPEDEFS (s/path [INVAR :predicate (s/if-path (s/must :predicates) [:predicates s/ALL] s/STAY)]))
 
 (defn get-init
-  [ir]
-  (first (s/select [INIT] ir)))
+  [u]
+  (first (s/select [INIT] u)))
+
+(defn add-clause
+  [u new-clause]
+  (s/setval [CLAUSES s/BEFORE-ELEM] new-clause u))
+
+(defn add-clause-after
+  [u new-clause]
+  (s/setval [CLAUSES s/AFTER-ELEM] new-clause u))
+
+(defn get-vars
+  [u]
+  (s/select [VARIABLES s/ALL] u))
+
+(defn set-vars
+  [u vars]
+  (s/setval [VARIABLES] vars u))
+
+(defn add-vars
+  [u vars]
+  (let [old-vars (get-vars u)]
+    (if (empty? old-vars)
+      (add-clause u {:tag :variables :identifiers vars})
+      (s/setval [VARIABLES] (concat old-vars vars) u))))
 
 (defn- make-assign-ir
   [[s t]]
@@ -35,52 +51,31 @@
 (defn add-inits
   "Takes an lisb IR and a seq that contains vector pairs of
   identifiers and values to be added to the init clause."
-  [ir inits]
+  [u inits]
   (let [new-assigns (map make-assign-ir inits)
-        prev-init (get-init ir)]
+        prev-init (get-init u)]
     (cond
-      (and (nil? prev-init) (= (count inits) 1)) (add-clause ir {:tag :init
+      (and (nil? prev-init) (= (count inits) 1)) (add-clause u {:tag :init
                                                                  :substitution (first new-assigns)})
-      (nil? prev-init) (add-clause ir {:tag :init,
+      (nil? prev-init) (add-clause u {:tag :init,
                                        :substitution {:tag :parallel-substitution
                                                      :substitutions new-assigns}})
       (= (:tag (:substitution prev-init)) :assign) (s/setval [INIT]
                                                              {:tag :init
                                                               :substitution {:tag :parallel-substitution
                                                                              :substitutions (conj new-assigns (:substitution prev-init))}}
-                                                             ir)
+                                                             u)
       :else (s/transform [INIT :substitution :substitutions]
                          #(concat % new-assigns)
-                         ir))))
+                         u))))
 
-(defn get-vars
-  [ir]
-  (s/select [VARIABLES s/ALL] ir))
-
-(defn set-vars
-  [ir vars]
-  (s/setval [VARIABLES] vars ir))
-
-(defn add-vars
-  [ir vars]
-  (let [old-vars (get-vars ir)]
-    (if (empty? old-vars)
-      (add-clause ir {:tag :variables :identifiers vars})
-      (s/setval [VARIABLES] (concat old-vars vars) ir))))
-
-(defn get-sets
-  [ir]
-  (s/select [SETS] ir))
-
-(defn clear-sets
-  [ir]
-  (s/setval [(s/walker #(= (:tag %) :sets))] s/NONE ir))
 
 (defn get-assigns-by-id
   [ir id]
   (s/select [(s/walker #(= (:tag %) :assign))
              #(= (:identifiers %) (list id))]
             ir))
+
 
 (defn count-inits
   [ir]
@@ -107,37 +102,37 @@
       (> n 2) (s/setval [PAR-ASSIGNS #(= (:identifiers %) (list id))] s/NONE ir))))
 
 (defn rm-inits-by-id
-  [ir ids]
-  (reduce rm-init-by-id ir ids))
+  [u ids]
+  (reduce rm-init-by-id u ids))
 
 (defn get-invariant
-  [ir]
-  (first (s/select [INVAR] ir)))
+  [u]
+  (first (s/select [INVAR] u)))
 
 (defn set-invariant
   [u new-invar]
   (s/setval [INVAR] new-invar u))
 
 (defn rm-typedef-by-id
-  [ir id]
-  (s/setval [INVAR :predicate :predicates s/ALL #(= (:element %) id)] s/NONE ir))
+  [u id]
+  (s/setval [TYPEDEFS #(= (:element %) id)] s/NONE u))
 
 (defn replace-calls-by-arg
-  [ir id]
-  (s/transform [(s/walker #(= (:tag %) :call)) #(= (:f %) id)] #(first (:args %)) ir))
+  [u id]
+  (s/transform [(s/walker #(= (:tag %) :call)) #(= (:f %) id)] #(first (:args %)) u))
 
 (defn rm-var-by-id
-  [ir id]
-  (s/setval [VARIABLES s/ALL #(= id %)] s/NONE ir))
+  [u id]
+  (s/setval [VARIABLES s/ALL #(= id %)] s/NONE u))
 
 (defn get-type
-  [ir var]
-  (s/select [INVAR :predicate :predicates s/ALL (TAG :member) #(= (:element %) var) :set] ir))
+  [u var]
+  (s/select [TYPEDEFS (TAG :member) #(= (:element %) var) :set] u))
 
 (defn generate-variables
   "Statically analyzes the IR and generates a map of bindings from variable id's that need to be rewritten to set of boolean ids corresponding to the variable in the new machine."
-  [ir]
-  (let [m (s/select [] ir)]
+  [u]
+  (let [m (s/select [] u)]
     m))
 
 (defn get-properties
@@ -147,3 +142,15 @@
 (defn set-properties
   [u new-properties]
   (s/setval [PROPERTIES] new-properties u))
+
+(defn add-typedef
+  [u [v s]]
+  (s/setval [TYPEDEFS s/ALL s/AFTER-ELEM]
+            {:tag :member
+                :element v
+                :set s}
+            u))
+
+(defn add-typedefs
+  [u defs]
+  (reduce add-typedef u defs))
