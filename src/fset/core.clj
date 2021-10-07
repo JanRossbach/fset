@@ -1,6 +1,8 @@
 (ns fset.core
   (:require
    [fset.predicates :refer [transform-predicate]]
+   [clojure.spec.alpha :refer [valid? explain]]
+   [fset.spec :refer :all]
    [fset.util :as util]))
 
 
@@ -31,11 +33,21 @@
                               :predicate (transform-predicate u (:predicate invariant))})
       u)))
 
+(defn validate
+  "Debugging helper function using clojure spec."
+  [u]
+  (if (valid? :fset/universe u)
+    u
+    (do (explain :fset/universe u)
+        (throw (ex-info "Something went wrong creating the universe. Spec did not match!"
+                        {:universe u})))))
+
 (defn transform
   "The entry Function that does the transformation."
   [max-size deferred-set-size ir set-to-rewrite] ;; Parameter order is chosen to make it easy to partial away the config stuff.
   (-> (->universe ir set-to-rewrite max-size deferred-set-size (util/generate-variables ir))
+      (validate)
       (transform-variables)
       (transform-invariant)
       (transform-properties)
-      (get :ir)))
+      (:ir)))
