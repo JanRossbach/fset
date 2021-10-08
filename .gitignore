@@ -2,6 +2,7 @@
 /classes
 /checkouts
 .lsp
+*.prob
 TODOs.org
 profiles.clj
 pom.xml
