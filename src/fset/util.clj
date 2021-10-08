@@ -143,16 +143,9 @@
   [u id]
   (s/transform [(s/walker #(= (:tag %) :call)) #(= (:f %) id)] #(first (:args %)) u))
 
-
 (defn get-type
   [u var]
   (s/select [TYPEDEFS (TAG :member) #(= (:element %) var) :set] u))
-
-;; FIXME
-(defn generate-variables
-  "Statically analyzes the IR and generates a map of bindings from variable id's that need to be rewritten to set of boolean ids corresponding to the variable in the new machine."
-  [_]
-  {:active #{:active_PID1 :active_PID2 :active_PID3}})
 
 (defn get-properties
   [u]

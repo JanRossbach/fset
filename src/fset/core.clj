@@ -3,11 +3,10 @@
    [fset.predicates :refer [transform-predicate]]
    [clojure.spec.alpha :refer [valid? explain]]
    [fset.spec :refer :all]
-   [fset.util :as util]))
-
+   [fset.util :as util]
+   [fset.variables :refer [generate-variables]]))
 
 (defrecord universe [ir ^clojure.lang.Keyword set-to-rewrite ^long max-size ^long deferred-set-size variables])
-
 
 (defn transform-variables
   [^universe u]
@@ -45,7 +44,7 @@
 (defn transform
   "The entry Function that does the transformation."
   [max-size deferred-set-size ir set-to-rewrite] ;; Parameter order is chosen to make it easy to partial away the config stuff.
-  (-> (->universe ir set-to-rewrite max-size deferred-set-size (util/generate-variables ir))
+  (-> (->universe ir set-to-rewrite max-size deferred-set-size (generate-variables ir))
       (validate)
       (transform-variables)
       (transform-invariant)

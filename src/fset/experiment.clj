@@ -30,6 +30,10 @@
 
   (p/pprint (ex/extract fe-ir :p))
 
+  (clojure.pprint/pprint (util/generate-variables {:variables {} :ir scheduler-ir :set-to-rewrite :PID :deferred-set-size 3}))
+
+  (util/resolve-type {:variables {} :ir scheduler-ir :set-to-rewrite :PID :deferred-set-size 3} :active {:tag :power-set :set :PID})
+
   (util/get-assigns-by-id fe-ir :p)
 
   (util/rm-typedef-by-id fe-ir :p)
@@ -39,7 +43,6 @@
   (p/pprint scheduler-ir)
 
   (util/get-assigns-by-id scheduler-ir :active)
-
 
   (p/pprint (fset/transform scheduler-ir :active))
 
