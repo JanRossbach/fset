@@ -1,18 +1,42 @@
-MACHINE scheduler
-SETS PID = {PID_1, PID_2, PID3}
-VARIABLES active_1, active_2, active_3, ready_PID1, ready_PID2, ready_PID3, waiting
-INVARIANT active_1 : BOOL & active_2 : BOOL & active_3 : BOOL & ready_PID1 : BOOL & ready_PID2 : BOOL & ready_PID3 :BOOL &waiting : POW(PID) &
-          (ready_PID1=FALSE <=> (PID_1 : )ready/\waiting={} &
-          (active_1=FALSE <=> (PID_1:ready\/waiting)) &
-          (active_2=FALSE <=> (PID_2:ready\/waiting)) &
-          (active_2=FALSE <=> (PID_3:ready\/waiting)) &
-          ((active_1=FALSE & active_2=FALSE &active_3=FALSE) or (active_1=TRUE & active_2=FALSE & active_3=FALSE)
-          or (active_1=FALSE & active_2=TRUE & active_3=FALSE) or (active_1=FALSE & active_2=FALSE & active_3=TRUE)) &
-          ((active_1=FALSE & active_2=FALSE & active_3=FALSE) => ready={})
-INITIALISATION active_1:=FALSE || active_2:=FALSE || active_3:=FALSE || ready:={} || waiting:={}
+MACHINE scheduler_rewritten
+SETS  PID = {PID1, PID2, PID3}
+VARIABLES activePID1, activePID2, activePID3, readyPID1, readyPID2, readyPID3, waitingPID1, waitingPID2, waitingPID3
+INVARIANT  
+	activePID1:BOOL & activePID2:BOOL & activePID3:BOOL & readyPID1:BOOL & readyPID2:BOOL & readyPID3:BOOL & waitingPID1:BOOL & waitingPID2:BOOL & waitingPID3:BOOL &
+	(bool(readyPID1=TRUE&waitingPID1=TRUE)=FALSE & bool(readyPID2=TRUE&waitingPID2=TRUE)=FALSE & bool(readyPID3=TRUE&waitingPID3=TRUE)=FALSE) &
+	bool(activePID1=TRUE & bool(readyPID1=TRUE or waitingPID1=TRUE)=TRUE) =FALSE & bool(activePID2=TRUE & bool(readyPID2=TRUE or waitingPID2=TRUE)=TRUE) =FALSE & bool(activePID3=TRUE & bool(readyPID3=TRUE or waitingPID3=TRUE)=TRUE) =FALSE &
+	((bool(activePID1=TRUE)=FALSE & bool(activePID2=TRUE)=FALSE & bool(activePID3=TRUE)=FALSE) 
+	or (bool(activePID1=TRUE)=TRUE & bool(activePID2=TRUE)=FALSE & bool(activePID3=TRUE)=FALSE)
+	or (bool(activePID1=TRUE)=FALSE & bool(activePID2=TRUE)=TRUE & bool(activePID3=TRUE)=FALSE)
+	or (bool(activePID1=TRUE)=FALSE & bool(activePID2=TRUE)=FALSE & bool(activePID3=TRUE)=TRUE)) &
+	((bool(activePID1=TRUE)=FALSE & bool(activePID2=TRUE)=FALSE & bool(activePID3=TRUE)=FALSE) => (bool(readyPID1=TRUE)=FALSE & bool(readyPID2=TRUE)=FALSE & bool(readyPID3=TRUE)=FALSE))
+INITIALISATION 
+   activePID1:=FALSE || activePID2 := FALSE || activePID3 := FALSE ||
+   readyPID1 := FALSE || readyPID2 := FALSE || readyPID3 := FALSE ||
+   waitingPID1 := FALSE || waitingPID2 := FALSE || waitingPID3 := FALSE
 OPERATIONS
-rr <-- nr_ready = rr := card(ready);
-new(pp) = SELECT pp:PID & pp/:active & pp/:ready\/waiting THEN waiting := waiting\/{pp} END ;
-del(pp) = SELECT pp:waiting THEN waiting := waiting-{pp} END ;
-ready(rr) = SELECT rr:waiting THEN waiting := waiting-{rr} || IF active={} THEN active := {rr} ELSE ready := ready\/{rr} END  END ;
-swap_1 = SELECT acive_1=TRUE THEN waiting := waiting\/PID_1 || IF ready={} THEN active_1:=FALSE ELSE ANY pp WHERE pp:read THEN
+newPID1 =
+    SELECT
+        activePID1=FALSE &
+        readyPID1=FALSE &
+        waitingPID1=FALSE
+    THEN
+        waitingPID1:=TRUE
+    END;
+newPID2 =
+    SELECT
+        activePID2=FALSE &
+        readyPID2=FALSE &
+        waitingPID2=FALSE
+    THEN
+        waitingPID2:=TRUE
+    END;
+newPID3 =
+    SELECT
+        activePID3=FALSE &
+        readyPID3=FALSE &
+        waitingPID3=FALSE
+    THEN
+        waitingPID3:=TRUE
+    END
+END
