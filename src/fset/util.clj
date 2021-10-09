@@ -194,3 +194,7 @@
       (throw (ex-info "No set definition with this identifier found" {:set-id ts
                                                                       :ir ir}))
       (= (:tag (first sets)) :enumerated-set))))
+
+(defn clear-empty-sets
+  [u]
+  (s/setval [INVAR :predicate :predicates s/ALL #(= % {})] s/NONE u))

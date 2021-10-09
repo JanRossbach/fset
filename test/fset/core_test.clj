@@ -1,10 +1,9 @@
 (ns fset.core-test
   (:require
    [clojure.test :refer [deftest testing is]]
-   [fset.util :as util]
    [fset.core :as fset]))
 
-(def transform (partial fset/transform 10 3))
+(def transform (partial fset/transform 10 3 true))
 
 (def empty-ir {:tag :machine, :variant {:tag :machine-variant}, :header {:tag :machine-header, :name :Empty, :parameters []}, :clauses nil})
 

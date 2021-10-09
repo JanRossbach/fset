@@ -2,7 +2,7 @@
   (:require
    [fset.util :as util]
    [fset.core :as fset]
-   [fset.variables :refer [generate-variables]]
+   [fset.backend.variables :refer [generate-variables]]
    [clojure.pprint :as p]
    [lisb.translation.util :refer [b->lisb lisb->b lisb->ir ir->b b->ir]]
    [fset.extract :as ex]))
@@ -14,6 +14,8 @@
 (def scheduler-ir (lisb->ir scheduler))
 
 (def fe-ir (lisb->ir (b->lisb (slurp "resources/machines/b/source/func_extract.mch"))))
+
+(def transform (partial fset/transform 10 3 true))
 
 ;; repl with example of executing the high level commands
 (comment
@@ -45,6 +47,10 @@
   (p/pprint (ex/extract fe-ir :p))
 
   (p/pprint scheduler-ir)
+
+  (spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (:ir (transform scheduler-ir :PID))))
+
+  (clojure.pprint/pprint (transform scheduler-ir :PID)))
 
   (util/get-assigns-by-id scheduler-ir :active)
 

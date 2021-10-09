@@ -5,7 +5,7 @@
    [lisb.core :refer [eval-ir-formula]]
    [lisb.prob.animator :refer [state-space!]]
    [lisb.translation.util :refer [lisb->ir]]
-   [clojure.core.match :refer [match]]
+   [lisb.translation.lisb2ir :refer [bcomp-set bmember?]]
    [fset.spec :refer :all]
    [fset.util :as util]
    [fset.backend.variables :refer [generate-variables]]))
@@ -55,20 +55,23 @@
 
 (defn validate
   "Debugging helper function using clojure spec."
-  [u]
-  (if (valid? :fset/universe u)
-    u
-    (do (explain :fset/universe u)
-        (throw (ex-info "Something went wrong creating the universe. Spec did not match!"
-                        {:universe u})))))
+  [u debug]
+  (if debug
+    (if (valid? :fset/universe u)
+      u
+      (do (explain :fset/universe u)
+          (throw (ex-info "Something went wrong creating the universe. Spec did not match!"
+                          {:universe u}))))
+    u))
 
 (defn transform
   "The entry Function that does the transformation."
-  [max-size deferred-set-size ir set-to-rewrite] ;; Parameter order is chosen to make it easy to partial away the config stuff.
+  [max-size deferred-set-size debug ir set-to-rewrite] ;; Parameter order is chosen to make it easy to partial away the config stuff.
   (let [u (->universe ir set-to-rewrite (calc-set-size ir set-to-rewrite max-size deferred-set-size) {})]
     (-> u
      (generate-variables)
-     (validate)
+     (validate debug)
      (transform-variables)
      (transform-invariant)
-     (transform-properties))))
+     (transform-properties)
+     (util/clear-empty-sets))))
