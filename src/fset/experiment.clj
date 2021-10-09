@@ -2,6 +2,7 @@
   (:require
    [fset.util :as util]
    [fset.core :as fset]
+   [fset.variables :refer [generate-variables]]
    [clojure.pprint :as p]
    [lisb.translation.util :refer [b->lisb lisb->b lisb->ir ir->b b->ir]]
    [fset.extract :as ex]))
@@ -30,13 +31,16 @@
 
   (p/pprint (ex/extract fe-ir :p))
 
-  (clojure.pprint/pprint (util/generate-variables {:variables {} :ir scheduler-ir :set-to-rewrite :PID :deferred-set-size 3}))
+  (clojure.pprint/pprint (generate-variables {:variables {} :ir scheduler-ir :target-set :PID :set-size 3}))
 
   (util/resolve-type {:variables {} :ir scheduler-ir :set-to-rewrite :PID :deferred-set-size 3} :active {:tag :power-set :set :PID})
 
   (util/get-assigns-by-id fe-ir :p)
 
   (util/rm-typedef-by-id fe-ir :p)
+
+  ;; Testing out custom java interop for no particular reason
+  (.sayHello (new main.java.Hello "Jan"))
 
   (p/pprint (ex/extract fe-ir :p))
 

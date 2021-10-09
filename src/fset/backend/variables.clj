@@ -1,17 +1,21 @@
-(ns fset.variables
+(ns fset.backend.variables
   (:require [fset.util :as util]))
 
 (defmulti resolve-type (fn [_ _ t] (:tag t)))
 
+(defmethod resolve-type :default
+  [_ var-id _]
+  [var-id])
+
 (defmethod resolve-type :power-set
   [u var-id _]
-  (let [n (:deferred-set-size u)
-        set (:set-to-rewrite u)]
+  (let [n (:set-size u)
+        set (:target-set u)]
     (vec (map (fn [i] (keyword (str (name var-id) (name set) i))) (range n)))))
 
 (defn- is-relevant?
   [u [_ type]]
-  (let [set-to-rewrite (:set-to-rewrite u)]
+  (let [set-to-rewrite (:target-set u)]
     (= (:set type) set-to-rewrite)))
 
 (defn- generate-variable

@@ -19,11 +19,11 @@
 
 ;; fset specs
 
-(spec/def :fset/deferred-sset-size number?)
-(spec/def :fset/set-to-rewrite keyword?)
+(spec/def :fset/set-size number?)
+(spec/def :fset/target-set keyword?)
 (spec/def :fset/variables (spec/map-of keyword? (spec/coll-of keyword?)))
 
 (spec/def :fset/universe (spec/keys :req-un [:lisb/ir
-                                             :fset/set-to-rewrite
-                                             :fset/deferred-set-size
+                                             :fset/target-set
+                                             :fset/set-size
                                              :fset/variables]))

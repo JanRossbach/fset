@@ -1,4 +1,4 @@
-(ns fset.predicates-test
+(ns fset.backend.predicates-test
   (:require
    [clojure.test :refer [deftest is testing]]
    [fset.predicates :refer [transform-predicate]]))

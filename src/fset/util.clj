@@ -13,7 +13,7 @@
 (def INVAR (s/path [(CLAUSE :invariants)]))
 (def PAR-ASSIGNS (s/path [INIT :substitution :substitutions s/ALL]))
 (def PROPERTIES (s/path [(CLAUSE :properties)]))
-(def TYPEDEFS (s/path [INVAR :predicate (s/if-path (s/must :predicates) [:predicates s/ALL] s/STAY)]))
+(def TYPEDEFS (s/path [INVAR :predicate (s/if-path (s/must :predicates) [:predicates] s/STAY)]))
 (def NEW-VARS (s/path [:variables s/MAP-VALS s/ALL]))
 (def OLD-VARS (s/path [:variables s/MAP-KEYS]))
 
@@ -47,10 +47,12 @@
 
 (defn add-vars
   [u vars]
-  (let [old-vars (get-vars u)]
-    (if (empty? old-vars)
-      (add-clause u {:tag :variables :identifiers vars})
-      (s/setval [VARIABLES] (concat old-vars vars) u))))
+  (if (empty? vars)
+    u
+    (let [old-vars (get-vars u)]
+      (if (empty? old-vars)
+        (add-clause u {:tag :variables :identifiers vars})
+        (s/setval [VARIABLES] (concat old-vars vars) u)))))
 
 (defn rm-var-by-id
   [u id]
@@ -145,7 +147,7 @@
 
 (defn get-type
   [u var]
-  (s/select [TYPEDEFS (TAG :member) #(= (:element %) var) :set] u))
+  (s/select [TYPEDEFS s/ALL (TAG :member) #(= (:element %) var) :set] u))
 
 (defn get-properties
   [u]
@@ -159,12 +161,36 @@
 
 (defn add-typedef
   [u [v s]]
-  (s/setval [TYPEDEFS s/ALL s/AFTER-ELEM]
-            {:tag :member
-                :element v
-                :set s}
-            u))
+  (let [prev-invar (get-invariant u)
+        prev-pred (:predicate prev-invar)]
+    (if (not= (:tag prev-pred) :and)
+      (s/setval [INVAR] {:tag :invariants
+                         :predicate {:tag :and
+                                     :predicates (list prev-pred {:tag :member
+                                                                  :element v
+                                                                  :set s})}} u)
+      (s/setval [TYPEDEFS s/AFTER-ELEM]
+                {:tag :member
+                 :element v
+                 :set s}
+                u))))
 
 (defn add-typedefs
   [u defs]
   (reduce add-typedef u defs))
+
+(defn is-deferred?
+  [ir ts]
+  (let [sets (s/select [SETS #(= (:identifier %) ts)] ir)]
+    (if (empty? sets)
+      (throw (ex-info "No set definition with this identifier found" {:set-id ts
+                                                                      :ir ir}))
+      (= (:tag (first sets)) :deferred-set))))
+
+(defn is-enumerated?
+  [ir ts]
+  (let [sets (s/select [SETS #(= (:identifier %) ts)] ir)]
+    (if (empty? sets)
+      (throw (ex-info "No set definition with this identifier found" {:set-id ts
+                                                                      :ir ir}))
+      (= (:tag (first sets)) :enumerated-set))))

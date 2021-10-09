@@ -12,10 +12,3 @@
 (m/mmul
  (m/array [[2 2] [3 3]])
  (m/array [[4 4] [5 5]])) ; => [[18 18] [27 27]]
-
-(defrecord problem [universe relations formula])
-
-(def kp (->problem #{:a1 :a2 :a3} [#{} #{} #{}] ()))
-
-(defn solve [^problem p]
-  (:universe p))

@@ -1,12 +1,16 @@
 (ns fset.core
   (:require
-   [fset.predicates :refer [transform-predicate]]
+   [fset.backend.predicates :refer [transform-predicate]]
    [clojure.spec.alpha :refer [valid? explain]]
+   [lisb.core :refer [eval-ir-formula]]
+   [lisb.prob.animator :refer [state-space!]]
+   [lisb.translation.util :refer [lisb->ir]]
+   [clojure.core.match :refer [match]]
    [fset.spec :refer :all]
    [fset.util :as util]
-   [fset.variables :refer [generate-variables]]))
+   [fset.backend.variables :refer [generate-variables]]))
 
-(defrecord universe [ir ^clojure.lang.Keyword set-to-rewrite ^long max-size ^long deferred-set-size variables])
+(defrecord universe [ir ^clojure.lang.Keyword target-set ^long set-size variables])
 
 (defn transform-variables
   [^universe u]
@@ -32,6 +36,23 @@
                               :predicate (transform-predicate u (:predicate invariant))})
       u)))
 
+(defn count-enum-set
+  [ss set-id]
+  (count (eval-ir-formula ss (lisb->ir `(bcomp-set [:x] (bmember? :x ~set-id))))))
+
+(defn calc-set-size
+  [ir ts m ds]
+  (if (< m ds)
+    (throw (ex-info "The deferred set size is larger than the max size!" {:deferred-size ds :max-size m}))
+    (if (util/is-enumerated? ir ts)
+      (let [c (count-enum-set (state-space! (lisb.translation.util/ir->ast ir)) ts)]
+        (if (< c m)
+          c
+          (throw (ex-info "The given set is bigger than the given maximum size!" {:set ts
+                                                                                  :ir ir
+                                                                                  :size c}))))
+      ds)))
+
 (defn validate
   "Debugging helper function using clojure spec."
   [u]
@@ -44,9 +65,10 @@
 (defn transform
   "The entry Function that does the transformation."
   [max-size deferred-set-size ir set-to-rewrite] ;; Parameter order is chosen to make it easy to partial away the config stuff.
-  (-> (->universe ir set-to-rewrite max-size deferred-set-size (generate-variables ir))
-      (validate)
-      (transform-variables)
-      (transform-invariant)
-      (transform-properties)
-      (:ir)))
+  (let [u (->universe ir set-to-rewrite (calc-set-size ir set-to-rewrite max-size deferred-set-size) {})]
+    (-> u
+     (generate-variables)
+     (validate)
+     (transform-variables)
+     (transform-invariant)
+     (transform-properties))))

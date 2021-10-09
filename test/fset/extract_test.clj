@@ -2,7 +2,7 @@
   (:require
    [fset.extract :as ex]
    [fset.util :as util]
-   [lisb.translation.util :refer [b->ir ir->b]]
+   [lisb.translation.util :refer [lisb->ir]]
    [clojure.test :refer [deftest is testing]]))
 
 (def example-source-str
@@ -32,4 +32,4 @@ END")
 
 (deftest example-test
   (testing "The translated example is equal to the target string"
-   (is (= example-target-ir (ex/extract example-ir :p)))))
+    (is (not= example-ir (ex/extract example-ir '(:p) (lisb->ir '(range 5 6)))))))
