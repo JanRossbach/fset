@@ -1,8 +1,7 @@
-(ns fset.experiment
+(ns fset.repl
   (:require
    [fset.util :as util]
    [fset.core :as fset]
-   [fset.backend.variables :refer [generate-variables]]
    [clojure.pprint :as p]
    [lisb.translation.util :refer [b->lisb lisb->b lisb->ir ir->b b->ir]]
    [fset.extract :as ex]))
@@ -50,7 +49,9 @@
 
   (spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (:ir (transform scheduler-ir :PID))))
 
-  (clojure.pprint/pprint (transform scheduler-ir :PID)))
+  (clojure.pprint/pprint (transform scheduler-ir :PID))
+
+  (clojure.pprint/pprint scheduler-ir)
 
   (util/get-assigns-by-id scheduler-ir :active)
 
@@ -58,4 +59,18 @@
 
   (ir->b {:tag :machine, :variant {:tag :machine-variant}, :header {:tag :machine-header, :name :Empty, :parameters []}, :clauses '({:tag :init
                                                                                                                                      :substitution {:tag :parallel-substitution
-                                                                                                                                                    :substitutions ()}})}))
+                                                                                                                                                    :substitutions ()}})})
+
+(def test-lisb
+  '(for [v '(:PID1 :PID2 :PID3)]
+      (bor v :active)))
+
+
+(def vars {:active [:activePID1 :activePID2 :activePID3] :ready [:readyPID1 :readyPID2 :readyPID3] :waiting [:waitingPID1 :waitingPID2 :waitingPID3]})
+
+(defn ors [_] [[:activePID1 :readyPID1] [:activePID2 :readyPID2] [:activePID3 :readyPID3]])
+
+(ir->b {:tag :and
+        :predicates (lisb->ir '(for [[l r] (ors vars)] (= (bpred->bool (bor (= l true) (= r true))) false)))})
+
+)
