@@ -16,6 +16,25 @@
 (def TYPEDEFS (s/path [INVAR :predicate (s/if-path (s/must :predicates) [:predicates] s/STAY)]))
 (def NEW-VARS (s/path [:variables s/MAP-VALS s/ALL]))
 (def OLD-VARS (s/path [:variables s/MAP-KEYS]))
+(def STATESPACE (s/path [:statespace]))
+(def OPERATIONS (s/path [(CLAUSE :operations)]))
+(def TARGET (s/path [:target-set]))
+
+;; Predicates
+
+(defn is-deferred?
+  [ir ts]
+  (let [sets (s/select [SETS #(= (:identifier %) ts)] ir)]
+    (if (empty? sets)
+      (throw (ex-info "No set definition with this identifier found" {:set-id ts
+                                                                      :ir ir}))
+      (= (:tag (first sets)) :deferred-set))))
+
+(defn is-enumerated?
+  [ir ts]
+  (not (is-deferred? ir ts)))
+
+;; GETTERS
 
 (defn get-new-var-ids
   [u]
@@ -29,6 +48,38 @@
   [u]
   (first (s/select [INIT] u)))
 
+(defn get-statespace
+  [u]
+  (first (s/select [STATESPACE] u)))
+
+(defn get-vars
+  [u]
+  (s/select [VARIABLES s/ALL] u))
+
+(defn get-assigns-by-id
+  [ir id]
+  (s/select [(s/walker #(= (:tag %) :assign))
+             #(= (:identifiers %) (list id))]
+            ir))
+
+(defn get-invariant
+  [u]
+  (first (s/select [INVAR] u)))
+
+(defn get-properties
+  [u]
+  (s/select [PROPERTIES] u))
+
+(defn get-target-set
+  [u]
+  (first (s/select [TARGET] u)))
+
+(defn get-operations
+  [u]
+  (s/select [(CLAUSE :operations) :operations s/ALL] u))
+
+;; ADDING
+
 (defn add-clause
   [u new-clause]
   (s/setval [CLAUSES s/BEFORE-ELEM] new-clause u))
@@ -36,14 +87,6 @@
 (defn add-clause-after
   [u new-clause]
   (s/setval [CLAUSES s/AFTER-ELEM] new-clause u))
-
-(defn get-vars
-  [u]
-  (s/select [VARIABLES s/ALL] u))
-
-(defn set-vars
-  [u vars]
-  (s/setval [VARIABLES] vars u))
 
 (defn add-vars
   [u vars]
@@ -53,6 +96,53 @@
       (if (empty? old-vars)
         (add-clause u {:tag :variables :identifiers vars})
         (s/setval [VARIABLES] (concat old-vars vars) u)))))
+
+
+(defn add-typedef
+  [u [v s]]
+  (let [prev-invar (get-invariant u)
+        prev-pred (:predicate prev-invar)]
+    (if (not= (:tag prev-pred) :and)
+      (s/setval [INVAR] {:tag :invariants
+                         :predicate {:tag :and
+                                     :predicates (list prev-pred {:tag :member
+                                                                  :element v
+                                                                  :set s})}} u)
+      (s/setval [TYPEDEFS s/AFTER-ELEM]
+                {:tag :member
+                 :element v
+                 :set s}
+                u))))
+
+(defn add-typedefs
+  [u defs]
+  (reduce add-typedef u defs))
+
+
+;; SETTERS
+
+
+(defn set-vars
+  [u vars]
+  (s/setval [VARIABLES] vars u))
+
+(defn set-invariant
+  [u new-invar]
+  (if (nil? (get-invariant u))
+    (add-clause u new-invar)
+    (s/setval [INVAR] new-invar u)))
+
+(defn set-properties
+  [u new-properties]
+  (if (nil? (get-properties u))
+    (add-clause u new-properties)
+    (s/setval [PROPERTIES] new-properties u)))
+
+(defn set-operations
+  [u ops]
+  (s/setval [(CLAUSE :operations)] ops u))
+
+;; REMOVING
 
 (defn rm-var-by-id
   [u id]
@@ -91,14 +181,6 @@
                          #(concat % new-assigns)
                          u))))
 
-
-(defn get-assigns-by-id
-  [ir id]
-  (s/select [(s/walker #(= (:tag %) :assign))
-             #(= (:identifiers %) (list id))]
-            ir))
-
-
 (defn count-inits
   [ir]
   (let [init-clause (get-init ir)]
@@ -127,15 +209,7 @@
   [u ids]
   (reduce rm-init-by-id u ids))
 
-(defn get-invariant
-  [u]
-  (first (s/select [INVAR] u)))
 
-(defn set-invariant
-  [u new-invar]
-  (if (nil? (get-invariant u))
-    (add-clause u new-invar)
-    (s/setval [INVAR] new-invar u)))
 
 (defn rm-typedef-by-id
   [u id]
@@ -145,55 +219,6 @@
   [u id]
   (s/transform [(s/walker #(= (:tag %) :call)) #(= (:f %) id)] #(first (:args %)) u))
 
-(defn get-type
-  [u var]
-  (s/select [TYPEDEFS s/ALL (TAG :member) #(= (:element %) var) :set] u))
-
-(defn get-properties
-  [u]
-  (s/select [PROPERTIES] u))
-
-(defn set-properties
-  [u new-properties]
-  (if (nil? (get-properties u))
-    (add-clause u new-properties)
-    (s/setval [PROPERTIES] new-properties u)))
-
-(defn add-typedef
-  [u [v s]]
-  (let [prev-invar (get-invariant u)
-        prev-pred (:predicate prev-invar)]
-    (if (not= (:tag prev-pred) :and)
-      (s/setval [INVAR] {:tag :invariants
-                         :predicate {:tag :and
-                                     :predicates (list prev-pred {:tag :member
-                                                                  :element v
-                                                                  :set s})}} u)
-      (s/setval [TYPEDEFS s/AFTER-ELEM]
-                {:tag :member
-                 :element v
-                 :set s}
-                u))))
-
-(defn add-typedefs
-  [u defs]
-  (reduce add-typedef u defs))
-
-(defn is-deferred?
-  [ir ts]
-  (let [sets (s/select [SETS #(= (:identifier %) ts)] ir)]
-    (if (empty? sets)
-      (throw (ex-info "No set definition with this identifier found" {:set-id ts
-                                                                      :ir ir}))
-      (= (:tag (first sets)) :deferred-set))))
-
-(defn is-enumerated?
-  [ir ts]
-  (let [sets (s/select [SETS #(= (:identifier %) ts)] ir)]
-    (if (empty? sets)
-      (throw (ex-info "No set definition with this identifier found" {:set-id ts
-                                                                      :ir ir}))
-      (= (:tag (first sets)) :enumerated-set))))
 
 (defn clear-empty-sets
   [u]

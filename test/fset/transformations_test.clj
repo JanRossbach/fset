@@ -1,7 +1,7 @@
 (ns fset.backend.predicates-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [fset.backend.predicates :refer [transform-predicate]]))
+   [fset.transformations :refer [predicate]]))
 
 (def and-ir
   {:tag :and,
@@ -32,4 +32,4 @@
 
 (deftest predicates-test
   (testing "AND"
-    (is (= and-ir (transform-predicate {} and-ir)))))
+    (is (not= and-ir (predicate {} and-ir)))))

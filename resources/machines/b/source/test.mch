@@ -18,6 +18,9 @@ INITIALISATION
    readyPID1 := FALSE || readyPID2 := FALSE || readyPID3 := FALSE ||
    waitingPID1 := FALSE || waitingPID2 := FALSE || waitingPID3 := FALSE
 OPERATIONS
+
+tt <-- test = tt:=card({x|x:  {waitingPID1, waitingPID2, waitingPID3} & x=TRUE});
+
 newPID1 =
     SELECT
         activePID1=FALSE &
