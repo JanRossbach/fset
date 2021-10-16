@@ -14,11 +14,11 @@
 (def PAR-ASSIGNS (s/path [INIT :substitution :substitutions s/ALL]))
 (def PROPERTIES (s/path [(CLAUSE :properties)]))
 (def TYPEDEFS (s/path [INVAR :predicate (s/if-path (s/must :predicates) [:predicates] s/STAY)]))
-(def NEW-VARS (s/path [:variables s/MAP-VALS s/ALL]))
-(def OLD-VARS (s/path [:variables s/MAP-KEYS]))
+(def NEW-VARS (s/path [:variables s/ALL :elems s/ALL]))
+(def OLD-VARS (s/path [:variables s/ALL :id]))
 (def STATESPACE (s/path [:statespace]))
 (def OPERATIONS (s/path [(CLAUSE :operations)]))
-(def TARGET (s/path [:target-set]))
+(def TARGET-SETS (s/path [:target-sets s/ALL]))
 
 ;; Predicates
 
@@ -70,13 +70,29 @@
   [u]
   (s/select [PROPERTIES] u))
 
-(defn get-target-set
+(defn get-target-sets
   [u]
-  (first (s/select [TARGET] u)))
+  (s/select [TARGET-SETS] u))
+
+(defn get-target-set-ids
+  [u]
+  (s/select [TARGET-SETS :id] u))
 
 (defn get-operations
   [u]
-  (s/select [(CLAUSE :operations) :operations s/ALL] u))
+  (s/select [OPERATIONS :operations s/ALL] u))
+
+(defn get-sets
+  [u]
+  (s/select [SETS] u))
+
+(defn get-set-ids
+  [u]
+  (s/select [SETS :identifier] u))
+
+(defn get-var-elems
+  [u var-id]
+  (s/select [:variables s/ALL #(= (:id %) var-id) :elems s/ALL] u))
 
 ;; ADDING
 
@@ -140,7 +156,11 @@
 
 (defn set-operations
   [u ops]
-  (s/setval [(CLAUSE :operations)] ops u))
+  (s/setval [OPERATIONS] ops u))
+
+(defn set-init
+  [u init]
+  (s/setval [INIT] init u))
 
 ;; REMOVING
 
@@ -209,8 +229,6 @@
   [u ids]
   (reduce rm-init-by-id u ids))
 
-
-
 (defn rm-typedef-by-id
   [u id]
   (s/setval [TYPEDEFS #(= (:element %) id)] s/NONE u))
@@ -218,7 +236,6 @@
 (defn replace-calls-by-arg
   [u id]
   (s/transform [(s/walker #(= (:tag %) :call)) #(= (:f %) id)] #(first (:args %)) u))
-
 
 (defn clear-empty-sets
   [u]

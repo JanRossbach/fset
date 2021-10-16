@@ -37,38 +37,19 @@
 (spec/def :fset/id keyword?)
 (spec/def :fset/elems (spec/coll-of :fset/id))
 (spec/def :fset/target-set (spec/keys :req-un [:fset/id :fset/elems]))
-(spec/def :fset/variables (spec/map-of keyword? (spec/coll-of keyword?)))
+(spec/def :fset/target-sets (spec/coll-of :fset/target-set))
+(spec/def :fset/set keyword?)
+(spec/def :fset/variable (spec/keys :req-un [:fset/id :fset/elems :fset/set]))
+(spec/def :fset/variables (spec/coll-of :fset/variable))
 (spec/def :lisb/statespace #(= (type %) de.prob.statespace.StateSpace))
 
 (spec/def :fset/universe (spec/keys :req-un [:lisb/ir
                                              :lisb/statespace
-                                             :fset/target-set
+                                             :fset/target-sets
                                              :fset/variables]))
 
+(defrecord universe [ir target-sets statespace variables])
 
-(defrecord universe [ir ^clojure.lang.Keyword target-set ^de.prob.statespace.StateSpace statespace variables])
-
-(defn gen-pow-set-vars
-  [{:keys [elems]} var-id]
-  (vec (map #(keyword (str (name var-id) (name %))) elems)))
-
-(defn generate-var
-  [ss ts vars-map var-id]
-  (let [t (b/get-type ss var-id)
-        ts-string (name (:id ts))]
-    (cond
-      (= t (str "POW(" ts-string ")")) (assoc vars-map var-id (gen-pow-set-vars ts var-id))
-      (= t "INTEGER") vars-map
-      (= t "BOOL") vars-map
-      :else vars-map)))
-
-(defn generate-variables-map
-  [u]
-  (let [target-set (util/get-target-set u)
-        ss (util/get-statespace u)
-        vars (util/get-vars u)
-        new-vars-map (reduce (partial generate-var ss target-set) (:variables u) vars)]
-    (assoc u :variables new-vars-map)))
 
 (defn unfset-variables
   [^universe u]
@@ -78,13 +59,20 @@
         (util/rm-vars old-vars)
         (util/add-vars new-vars))))
 
-;; TODO Maybe use the ProB api to ask which configurations are valid?
 (defn unfset-invariant
   [^universe u]
   (let [invariant (util/get-invariant u)]
     (if invariant
       (util/set-invariant u {:tag :invariants
                               :predicate (transform/predicate u (:predicate invariant))})
+      u)))
+
+(defn unfset-initialisation
+  [^universe u]
+  (let [init (util/get-init u)]
+    (if init
+      (util/set-init u {:tag :init
+                        :substitution (transform/substitution u (:substitution init))})
       u)))
 
 (defn- unroll-operation
@@ -94,7 +82,7 @@
         vars (b/get-parameter-vars u parameters)]
     (map (fn [var-id] {:tag :operation
                        :return return
-                       :name (keyword (str name (clojure.core/name var-id)))
+                       :name (keyword (str (clojure.core/name name) (clojure.core/name var-id)))
                        :parameters []
                        :body (transform/body u body)})
          vars)))
@@ -116,22 +104,57 @@
                           {:universe u}))))
     u))
 
-(defn determine-set-elems
-  [ir set-to-rewrite _ d-set-size]
+(defn- gen-pow-set-vars
+  [ss set-id var-id]
+  (vec (map #(keyword (str (name var-id) (name %))) (b/set-elems ss set-id))))
+
+(defn- extract-ts-from-string
+  [type-string]
+  (if (re-matches #"POW\((.)*\)" type-string)
+    (keyword (subs type-string 4 (dec (count type-string))))
+    nil))
+
+(defn- generate-var
+  [ss var-id]
+  (let [t (b/get-type ss var-id)
+        ts (extract-ts-from-string t)]
+    (if (re-matches #"POW\((.)*\)" t)
+      {:id var-id
+       :set ts
+       :elems (gen-pow-set-vars ss ts var-id)}
+      {})))
+
+(defn- generate-variables-map
+  [ir ss]
+  (let [vars (util/get-vars ir)]
+    (filter #(not= % {}) (map (partial generate-var ss) vars))))
+
+(defn- determine-set-elems
+  [ir set-to-rewrite d-set-size ss]
   (if (util/is-deferred? ir set-to-rewrite)
     (map (fn [i] (keyword (str (name set-to-rewrite) i))) (range d-set-size))
-    (map keyword (b/set-elems (b/get-statespace ir) set-to-rewrite))))
+    (map keyword (b/set-elems ss set-to-rewrite))))
 
-;; TODO Only make one statespace call instead of 2
-(defn unfset
+(defn- determine-target-sets
+  [ir ss m dss]
+  (let [candidate-sets (util/get-set-ids ir)]
+    (->> candidate-sets
+         (map (fn [id] {:id id
+                       :elems (determine-set-elems ir id dss ss)}))
+         (filter #(< (count (:elems %)) m))
+         vec)))
+
+(defn boolencode
   "The entry Function that does the transformation."
-  [max-size deferred-set-size debug ir set-to-rewrite] ;; Parameter order is chosen to make it easy to partial away the config stuff.
-  (let [u (->universe ir {:id set-to-rewrite :elems (determine-set-elems ir set-to-rewrite max-size deferred-set-size)} (b/get-statespace ir) {})]
-    (-> u
-     (generate-variables-map)
-     (validate debug)
-     (unfset-variables)
-     (unfset-invariant)
-     (unfset-operations)
-     (util/clear-empty-sets)
-     (validate debug))))
+  [max-size deferred-set-size debug ir _] ;; Parameter order is chosen to make it easy to partial away the config stuff.
+  (let [ss (b/get-statespace ir)
+        target-sets (determine-target-sets ir ss max-size deferred-set-size)
+        variables-map (generate-variables-map ir ss)]
+    (-> (->universe ir target-sets ss variables-map)
+        (validate debug)
+        (unfset-variables)
+        (unfset-invariant)
+        (unfset-initialisation)
+        (unfset-operations)
+        (util/clear-empty-sets)
+        (validate debug))))

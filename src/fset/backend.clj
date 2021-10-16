@@ -35,6 +35,7 @@
   (let [invar-lisb (ast->lisb (ir->ast predicate))]
     (eval-ir-formula ss (lisb->ir `(bcomp-set [~var-id] ~invar-lisb)))))
 
+;; TODO
 (defn get-parameter-vars
-  [u parameters]
-  (:variables u))
+  [u _]
+  (map keyword (set-elems (:statespace u) :PID)))

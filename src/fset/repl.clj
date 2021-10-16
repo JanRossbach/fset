@@ -3,7 +3,6 @@
    [fset.util :as util]
    [fset.core :as fset]
    [fset.backend :as b]
-   [lisb.prob.animator :refer [state-space!]]
    [clojure.pprint :as p]
    [lisb.translation.util :refer [b->lisb lisb->b lisb->ir ir->b b->ir ir->ast]]
    [fset.extract :as ex]))
@@ -16,7 +15,7 @@
 
 (def fe-ir (lisb->ir (b->lisb (slurp "resources/machines/b/source/func_extract.mch"))))
 
-(def transform (partial fset/unfset 10 3 true))
+(def transform (partial fset/boolencode 10 3 true))
 
 (def ss (b/get-statespace (b->ir (slurp "resources/machines/b/source/scheduler.mch"))))
 
@@ -46,27 +45,28 @@
 
   (clojure.pprint/pprint scheduler-ir)
 
-
-  ;; TODO SELBES PROBLEM? Idnetifier not initialized
+;; TODO SELBES PROBLEM? Idnetifier not initialized
   (b/get-possible-var-states ss :pp
-       {:tag :member :element :pp :set :waiting})
-
-  (b/test-fun ss pred-ir)
-
+                             {:tag :member :element :pp :set :waiting})
 
   (util/rm-typedef-by-id fe-ir :p)
 
+  (util/get-sets scheduler-ir)
+
+  (util/get-set-ids scheduler-ir)
+
+  (fset/determine-target-sets scheduler-ir 10 3)
+
   (b/get-type ss :PID)
 
-
-  ;; Testing out custom java interop for no particular reason
+;; Testing out custom java interop for no particular reason
   (.sayHello (new main.java.Hello "Jan"))
 
   (p/pprint (ex/extract fe-ir :p))
 
-  (p/pprint scheduler-ir)
+  (p/pprint (fset/boolencode 10 3 true scheduler-ir :PID))
 
-  (spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (:ir (transform scheduler-ir :PID))))
+  (spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (:ir (fset/boolencode 10 3 true scheduler-ir :PID))))
 
   (clojure.pprint/pprint (transform scheduler-ir :PID))
 
@@ -74,7 +74,7 @@
 
   (util/get-assigns-by-id scheduler-ir :active)
 
-  (p/pprint (transform scheduler-ir :PID))
+  (ir->b (transform scheduler-ir :PID))
 
   (ir->b {:tag :machine, :variant {:tag :machine-variant}, :header {:tag :machine-header, :name :Empty, :parameters []}, :clauses '({:tag :init
                                                                                                                                      :substitution {:tag :parallel-substitution
