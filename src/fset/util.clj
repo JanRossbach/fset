@@ -7,8 +7,8 @@
 (defn TAG [t] (s/path #(= (:tag %) t)))
 (def CLAUSES (s/if-path (s/must :ir) [:ir :clauses] [:clauses]))
 (defn CLAUSE [^clojure.lang.Keyword name] (s/path [CLAUSES s/ALL (TAG name)]))
-(def VARIABLES (s/path [(CLAUSE :variables) :identifiers]))
-(def SETS (s/path [(CLAUSE :sets) :set-definitions s/ALL]))
+(def VARIABLES (s/path [(CLAUSE :variables) :values]))
+(def SETS (s/path [(CLAUSE :sets) :values s/ALL]))
 (def INIT (s/path [(CLAUSE :init)]))
 (def INVAR (s/path [(CLAUSE :invariants)]))
 (def PAR-ASSIGNS (s/path [INIT :substitution :substitutions s/ALL]))
@@ -66,6 +66,10 @@
   [u]
   (first (s/select [INVAR] u)))
 
+(defn get-invariant-as-pred
+  [u]
+  {:tag :and :predicates (apply list (s/select [INVAR :values s/ALL] u))})
+
 (defn get-properties
   [u]
   (s/select [PROPERTIES] u))
@@ -80,7 +84,7 @@
 
 (defn get-operations
   [u]
-  (s/select [OPERATIONS :operations s/ALL] u))
+  (s/select [OPERATIONS :values s/ALL] u))
 
 (defn get-sets
   [u]
@@ -110,7 +114,7 @@
     u
     (let [old-vars (get-vars u)]
       (if (empty? old-vars)
-        (add-clause u {:tag :variables :identifiers vars})
+        (add-clause u {:tag :variables :values (apply list vars)})
         (s/setval [VARIABLES] (concat old-vars vars) u)))))
 
 
@@ -239,4 +243,4 @@
 
 (defn clear-empty-sets
   [u]
-  (s/setval [INVAR :predicate :predicates s/ALL #(= % {})] s/NONE u))
+  (s/setval [INVAR :values s/ALL #(= % {})] s/NONE u))

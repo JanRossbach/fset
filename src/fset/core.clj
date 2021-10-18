@@ -30,7 +30,7 @@
 (spec/def :lisb/clauses (spec/or :nil nil?
                                  :clause (spec/coll-of :lisb/clause)))
 
-(spec/def :lisb/ir (spec/keys :req-un [:lisb/tag :lisb/variant :lisb/header :lisb/clauses]))
+(spec/def :lisb/ir (spec/keys :req-un [:lisb/tag :lisb/clauses]))
 
 ;; fset specs
 
@@ -64,7 +64,7 @@
   (let [invariant (util/get-invariant u)]
     (if invariant
       (util/set-invariant u {:tag :invariants
-                              :predicate (transform/predicate u (:predicate invariant))})
+                             :values (map (partial transform/predicate u) (:values invariant))})
       u)))
 
 (defn unfset-initialisation
@@ -72,7 +72,7 @@
   (let [init (util/get-init u)]
     (if init
       (util/set-init u {:tag :init
-                        :substitution (transform/substitution u (:substitution init))})
+                        :values (map (partial transform/substitution u) (:values init))})
       u)))
 
 (defn- unroll-operation
@@ -91,7 +91,7 @@
   [^universe u]
   (let [old-ops (util/get-operations u)]
     (util/set-operations u {:tag :operations
-                            :operations (mapcat (partial unroll-operation u) old-ops)})))
+                            :values (mapcat (partial unroll-operation u) old-ops)})))
 
 (defn validate
   "Debugging helper function using clojure spec."

@@ -4,7 +4,7 @@
    [fset.core :as fset]
    [fset.backend :as b]
    [lisb.prob.animator :refer [state-space!]]
-   [clojure.pprint :as p]
+   [clojure.pprint :refer [pprint]]
    [lisb.translation.util :refer [b->lisb lisb->b lisb->ir ir->b b->ir ir->ast]]
    [fset.extract :as ex]))
 
@@ -20,10 +20,17 @@
 
 (def scheduler-ir (b->ir (slurp "resources/machines/b/source/scheduler.mch")))
 
+(pprint scheduler-ir)
+
 (def ss (b/get-statespace scheduler-ir))
 
+(util/get-invariant-as-pred scheduler-ir)
 
-(b/get-possible-var-states ss '(:active :ready :waiting) (:predicate (util/get-invariant scheduler-ir)))
+
+(util/get-operations scheduler-ir)
+
+
+(b/get-possible-var-states ss '(:active :ready :waiting) (util/get-invariant-as-pred scheduler-ir))
 
 (def scheduler-ss (b/get-statespace scheduler-ir))
 
