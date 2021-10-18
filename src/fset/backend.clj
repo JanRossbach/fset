@@ -12,12 +12,15 @@
 
 (m/set-current-implementation :vectorz) ;; switch to vectorz vectors in order to improve performance
 
-(defn get-statespace
+(defn get-init-statespace
   [ir]
   (let [ss (state-space! (ir->ast ir))
         trace (.addTransitionWith (Trace. ss) "$initialise_machine" [])]
     (.getStateSpace trace)))
 
+(defn get-statespace
+  [ir]
+  (state-space! (ir->ast ir)))
 
 (defn set-elems
   [ss set-id]
@@ -31,9 +34,10 @@
     (.getType (.typeCheck ss ee))))
 
 (defn get-possible-var-states
-  [ss var-id predicate]
-  (let [invar-lisb (ast->lisb (ir->ast predicate))]
-    (eval-ir-formula ss (lisb->ir `(bcomp-set [~var-id] ~invar-lisb)))))
+  [ss vars predicate]
+  (eval-ir-formula ss {:tag :comp-set
+                       :identifiers vars
+                       :predicate predicate}))
 
 ;; TODO
 (defn get-parameter-vars

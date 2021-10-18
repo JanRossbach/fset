@@ -1,7 +1,7 @@
 MACHINE scheduler
 
 SETS
-    PID = {PID1, PID2, PID3, PID4}
+    PID = {PID1, PID2, PID3}
 
 VARIABLES active, ready, waiting
 
@@ -22,14 +22,6 @@ INITIALISATION
 OPERATIONS
 
 rr <-- nr_ready = rr:= card(ready);
-
-ss <-- test = ss:={active | active <: PID &
-           ready <: PID   &
-           waiting <: PID &
-           (ready /\ waiting) = {} &
-           active /\ (ready \/ waiting) = {} &
-           card(active) <= 1 &
-           ((active = {})  => (ready = {})) };
 
 new(pp) =
     SELECT

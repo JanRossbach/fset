@@ -24,12 +24,23 @@
       {:tag :equal :left #{} :right r} {}
       _ p)))
 
+(defn variable?
+  [u id]
+  (some #(= % id) (util/get-vars u)))
+
+(defn union
+  [_ s1 s2]
+  {:tag :union
+   :sets (list s1 s2)})
+
 (defn expression
   [u e]
-  (let [{:keys [target-set variables]} u]
+  (let [set-ids (util/get-set-ids u)]
     (match e
-      {:tag :union :sets ([s1 s2] :seq)} e
-      _ e)))
+           {:tag :union :sets ([s1 s2] :seq)} (union u s1 s2)
+           _ e)))
+
+(expression {} :active)
 
 (defn- op-predicate
   [u pred]

@@ -3,21 +3,66 @@
    [fset.util :as util]
    [fset.core :as fset]
    [fset.backend :as b]
+   [lisb.prob.animator :refer [state-space!]]
    [clojure.pprint :as p]
    [lisb.translation.util :refer [b->lisb lisb->b lisb->ir ir->b b->ir ir->ast]]
    [fset.extract :as ex]))
 
 ;; Namespace to run the core functions in a repl and experiment with results.
 
-(def scheduler (read-string (slurp (str "resources/machines/lisb/source/scheduler.edn"))))
 
-(def scheduler-ir (lisb->ir scheduler))
+
+
 
 (def fe-ir (lisb->ir (b->lisb (slurp "resources/machines/b/source/func_extract.mch"))))
 
 (def transform (partial fset/boolencode 10 3 true))
 
-(def ss (b/get-statespace (b->ir (slurp "resources/machines/b/source/scheduler.mch"))))
+(def scheduler-ir (b->ir (slurp "resources/machines/b/source/scheduler.mch")))
+
+(def ss (b/get-statespace scheduler-ir))
+
+
+(b/get-possible-var-states ss '(:active :ready :waiting) (:predicate (util/get-invariant scheduler-ir)))
+
+(def scheduler-ss (b/get-statespace scheduler-ir))
+
+(def mutex-ir (b->ir (slurp "resources/machines/b/source/mutex.mch")))
+
+(state-space! (ir->ast mutex-ir))
+
+(def mutex-ss (b/get-statespace mutex-ir))
+
+
+(def lift-ir (b->ir (slurp "resources/machines/b/source/Lift.mch")))
+
+(def lift-ss (state-space! (ir->ast lift-ir)))
+
+
+(def lift-vars (util/get-vars lift-ir))
+
+(def lift-invar (:predicate (util/get-invariant lift-ir)))
+
+(b/get-possible-var-states lift-ss lift-vars lift-invar)
+
+
+(b/get-possible-var-states scheduler-ss [:active :ready :waiting] (:predicate (util/get-invariant scheduler-ir)))
+
+
+(defn test-fun
+  []
+  (let [fn "resources/machines/b/source/test.mch"
+        ir (b->ir (slurp fn))
+        ss (b/get-statespace ir)
+        vars (util/get-vars ir)
+        invar (util/get-invariant ir)]
+    (b/get-possible-var-states ss vars (:predicate invar))))
+
+(test-fun)
+
+(p/pprint (b->ir (slurp "resources/machines/b/source/test.mch")))
+
+(ir->b (b->ir (slurp "resources/machines/b/source/test.mch")))
 
 ;; repl with example of executing the high level commands
 (comment
@@ -59,34 +104,31 @@
 
   (b/get-type ss :PID)
 
-;; Testing out custom java interop for no particular reason
-  (.sayHello (new main.java.Hello "Jan"))
+                             (p/pprint (ex/extract fe-ir :p))
 
-  (p/pprint (ex/extract fe-ir :p))
+                             (p/pprint (fset/boolencode 10 3 true scheduler-ir :PID))
 
-  (p/pprint (fset/boolencode 10 3 true scheduler-ir :PID))
+                             (spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (:ir (fset/boolencode 10 3 true scheduler-ir :PID))))
 
-  (spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (:ir (fset/boolencode 10 3 true scheduler-ir :PID))))
+                             (clojure.pprint/pprint (transform scheduler-ir :PID))
 
-  (clojure.pprint/pprint (transform scheduler-ir :PID))
+                             (clojure.pprint/pprint scheduler-ir)
 
-  (clojure.pprint/pprint scheduler-ir)
+                             (util/get-assigns-by-id scheduler-ir :active)
 
-  (util/get-assigns-by-id scheduler-ir :active)
+                             (ir->b (transform scheduler-ir :PID))
 
-  (ir->b (transform scheduler-ir :PID))
+                             (ir->b {:tag :machine, :variant {:tag :machine-variant}, :header {:tag :machine-header, :name :Empty, :parameters []}, :clauses '({:tag :init
+                                                                                                                                                                :substitution {:tag :parallel-substitution
+                                                                                                                                                                               :substitutions ()}})})
 
-  (ir->b {:tag :machine, :variant {:tag :machine-variant}, :header {:tag :machine-header, :name :Empty, :parameters []}, :clauses '({:tag :init
-                                                                                                                                     :substitution {:tag :parallel-substitution
-                                                                                                                                                    :substitutions ()}})})
+                             (def test-lisb
+                               '(for [v '(:PID1 :PID2 :PID3)]
+                                  (bor v :active)))
 
-  (def test-lisb
-    '(for [v '(:PID1 :PID2 :PID3)]
-       (bor v :active)))
+                             (def vars {:active [:activePID1 :activePID2 :activePID3] :ready [:readyPID1 :readyPID2 :readyPID3] :waiting [:waitingPID1 :waitingPID2 :waitingPID3]})
 
-  (def vars {:active [:activePID1 :activePID2 :activePID3] :ready [:readyPID1 :readyPID2 :readyPID3] :waiting [:waitingPID1 :waitingPID2 :waitingPID3]})
+                             (defn ors [_] [[:activePID1 :readyPID1] [:activePID2 :readyPID2] [:activePID3 :readyPID3]])
 
-  (defn ors [_] [[:activePID1 :readyPID1] [:activePID2 :readyPID2] [:activePID3 :readyPID3]])
-
-  (ir->b {:tag :and
-          :predicates (lisb->ir '(for [[l r] (ors vars)] (= (bpred->bool (bor (= l true) (= r true))) false)))}))
+                             (ir->b {:tag :and
+                                     :predicates (lisb->ir '(for [[l r] (ors vars)] (= (bpred->bool (bor (= l true) (= r true))) false)))})))
