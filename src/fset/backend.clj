@@ -33,11 +33,12 @@
         ee (ClassicalB. formula-ast FormulaExpand/TRUNCATE "")]
     (.getType (.typeCheck ss ee))))
 
+;; TODO Catch possible infinite result Error
 (defn get-possible-var-states
-  [ss vars predicate]
+  [ss target-var other-vars predicate]
   (eval-ir-formula ss {:tag :comp-set
-                       :identifiers vars
-                       :predicate predicate}))
+                       :identifiers target-var
+                       :predicate {:tag :exists :identifiers other-vars :predicate predicate}}))
 
 ;; TODO
 (defn get-parameter-vars

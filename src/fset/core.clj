@@ -29,8 +29,9 @@
                                 :operations :lisb/operations))
 (spec/def :lisb/clauses (spec/or :nil nil?
                                  :clause (spec/coll-of :lisb/clause)))
+(spec/def :lisb/name keyword?)
 
-(spec/def :lisb/ir (spec/keys :req-un [:lisb/tag :lisb/clauses]))
+(spec/def :lisb/ir (spec/keys :req-un [:lisb/tag :lisb/clauses :lisb/name]))
 
 ;; fset specs
 
@@ -114,20 +115,29 @@
     (keyword (subs type-string 4 (dec (count type-string))))
     nil))
 
+(defn api-str->keyword
+  [var api-result]
+  (into #{}
+        (for [r api-result]
+          (into #{} (map (fn [s] (keyword (str (name var) s)))  r)))))
+
 (defn- generate-var
-  [ss var-id]
+  [ss vars invar var-id]
   (let [t (b/get-type ss var-id)
-        ts (extract-ts-from-string t)]
+        ts (extract-ts-from-string t)
+        states (b/get-possible-var-states ss (list var-id) (filter #(not= % var-id) vars) invar)]
     (if (re-matches #"POW\((.)*\)" t)
       {:id var-id
-       :set ts
-       :elems (gen-pow-set-vars ss ts var-id)}
+       :set {:tag :power-set :set ts}
+       :elems (gen-pow-set-vars ss ts var-id)
+       :states (api-str->keyword var-id states)}
       {})))
 
 (defn- generate-variables-map
   [ir ss]
-  (let [vars (util/get-vars ir)]
-    (filter #(not= % {}) (map (partial generate-var ss) vars))))
+  (let [vars (util/get-vars ir)
+        invar (util/get-invariant-as-pred ir)]
+    (filter #(not= % {}) (map (partial generate-var ss vars invar) vars))))
 
 (defn- determine-set-elems
   [ir set-to-rewrite d-set-size ss]

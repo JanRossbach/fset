@@ -7,30 +7,30 @@
   {:clauses '()})
 
 (def one-clause-ir
-  {:clauses '({:tag :invariants :predicate nil})})
+  {:clauses '({:tag :invariants :values nil})})
 
-(def two-clause-ir {:clauses '({:tag :invariants :predicate nil}
-                               {:tag :init :substitution nil})})
+(def two-clause-ir {:clauses '({:tag :invariants :values nil}
+                               {:tag :init :values nil})})
 
 (deftest clause-utils-test
   (testing "Adding new clauses"
-    (is (= one-clause-ir (util/add-clause no-clause-ir {:tag :invariants :predicate nil})))
-    (is (= two-clause-ir (util/add-clause-after one-clause-ir {:tag :init :substitution nil})))))
+    (is (= one-clause-ir (util/add-clause no-clause-ir {:tag :invariants :values nil})))
+    (is (= two-clause-ir (util/add-clause-after one-clause-ir {:tag :init :values nil})))))
 
 (def no-variables-ir
   {:clauses '()})
 
 (def one-variable-ir
   {:clauses '({:tag :variables
-               :identifiers (:active)})})
+               :values (:active)})})
 
 (def some-variables-ir
   {:clauses
    '({:tag :variables
-      :identifiers (:active :ready :waiting)})})
+      :values (:active :ready :waiting)})})
 
 (def more-variables-ir {:clauses '({:tag :variables
-                                    :identifiers (:active :ready :waiting :hello :world)})})
+                                    :values (:active :ready :waiting :hello :world)})})
 
 (deftest variable-utils-test
   (testing "Getting"
@@ -48,39 +48,42 @@
 (def no-init-ir {:clauses '()})
 (def single-init-ir {:clauses
                      '({:tag :init
-                        :substitution {:tag :assign :identifiers (:q) :values (7)}})})
+                        :values ({:tag :assign :identifiers (:q) :values (7)})})})
+
+
+
 (def multiple-init-ir
   {:clauses
    '({:tag :init
-      :substitution {:tag :parallel-substitution
-                     :substitutions ({:tag :assign :identifiers (:q) :values (7)}
-                                     {:tag :assign :identifiers (:r) :values (13)})}})})
+      :values ({:tag :parallel-substitution
+                 :substitutions ({:tag :assign :identifiers (:q) :values (7)}
+                                 {:tag :assign :identifiers (:r) :values (13)})})})})
 
 (def more-init-ir
   {:clauses
    '({:tag :init
-      :substitution {:tag :parallel-substitution
-                     :substitutions ({:tag :assign :identifiers (:q) :values (7)}
-                                     {:tag :assign :identifiers (:r) :values (13)}
-                                     {:tag :assign :identifiers (:p) :values (3)})}})})
+      :values ({:tag :parallel-substitution
+                 :substitutions ({:tag :assign :identifiers (:q) :values (7)}
+                                 {:tag :assign :identifiers (:r) :values (13)}
+                                 {:tag :assign :identifiers (:p) :values (3)})})})})
 
 (def even-more-init-ir
   {:clauses
    '({:tag :init
-      :substitution {:tag :parallel-substitution
-                     :substitutions ({:tag :assign :identifiers (:q) :values (7)}
-                                     {:tag :assign :identifiers (:r) :values (13)}
-                                     {:tag :assign :identifiers (:p) :values (3)}
-                                     {:tag :assign :identifiers (:x) :values (15)}
-                                     {:tag :assign :identifiers (:y) :values (false)}
-                                     {:tag :assign :identifiers (:z) :values (:VAR)})}})})
+      :values ({:tag :parallel-substitution
+                 :substitutions ({:tag :assign :identifiers (:q) :values (7)}
+                                 {:tag :assign :identifiers (:r) :values (13)}
+                                 {:tag :assign :identifiers (:p) :values (3)}
+                                 {:tag :assign :identifiers (:x) :values (15)}
+                                 {:tag :assign :identifiers (:z) :values (:VAR)})})})})
+
 (deftest init-utils-test
   (testing "Counting"
     (is (= 0 (util/count-inits no-init-ir)))
     (is (= 1 (util/count-inits single-init-ir)))
     (is (= 2 (util/count-inits multiple-init-ir)))
     (is (= 3 (util/count-inits more-init-ir)))
-    (is (= 6 (util/count-inits even-more-init-ir))))
+    (is (= 5 (util/count-inits even-more-init-ir))))
   (testing "Getting"
     (is (= (first (:clauses multiple-init-ir)) (util/get-init multiple-init-ir)))
     (is (empty? (util/get-init some-variables-ir))))

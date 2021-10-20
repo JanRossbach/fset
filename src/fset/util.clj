@@ -206,12 +206,13 @@
                          u))))
 
 (defn count-inits
-  [ir]
-  (let [init-clause (get-init ir)]
-    (cond
-      (nil? init-clause) 0
-      (= :assign (:tag (:substitution init-clause))) 1
-      :else (count (:substitutions (:substitution init-clause))))))
+  [u]
+  (let [init-sub (first (s/select [INIT :values s/ALL] u))]
+    (if init-sub
+      (if (:substitutions init-sub)
+        (count (:substitutions init-sub))
+        1)
+      0)))
 
 (defn rm-init-by-id
   [ir id]

@@ -20,26 +20,33 @@
 
 (def scheduler-ir (b->ir (slurp "resources/machines/b/source/scheduler.mch")))
 
-(pprint scheduler-ir)
+(def test-ir (b->ir (slurp "resources/machines/b/source/test.mch")))
 
-(def ss (b/get-statespace scheduler-ir))
+(def test-ss (b/get-statespace test-ir))
+
+(def scheduler-ss (b/get-statespace scheduler-ir))
+
+(def api-result (b/get-possible-var-states test-ss '(:active :ready :waiting) (util/get-invariant-as-pred scheduler-ir)))
+
+(b/get-possible-var-states test-ss '(:ready) '(:active :waiting) (util/get-invariant-as-pred scheduler-ir))
+
+(defn interpret-api-result
+  [vars result]
+  )
+
+(interpret-api-result '(:active :ready :waiting))
+
 
 (util/get-invariant-as-pred scheduler-ir)
 
 
-(util/get-operations scheduler-ir)
 
 
-(b/get-possible-var-states ss '(:active :ready :waiting) (util/get-invariant-as-pred scheduler-ir))
-
-(def scheduler-ss (b/get-statespace scheduler-ir))
 
 (def mutex-ir (b->ir (slurp "resources/machines/b/source/mutex.mch")))
-
-(state-space! (ir->ast mutex-ir))
-
 (def mutex-ss (b/get-statespace mutex-ir))
 
+(spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (:ir (fset/boolencode 10 3 true scheduler-ir :PID))))
 
 (def lift-ir (b->ir (slurp "resources/machines/b/source/Lift.mch")))
 
@@ -111,31 +118,31 @@
 
   (b/get-type ss :PID)
 
-                             (p/pprint (ex/extract fe-ir :p))
+  (p/pprint (ex/extract fe-ir :p))
 
-                             (p/pprint (fset/boolencode 10 3 true scheduler-ir :PID))
+  (pprint (fset/boolencode 10 3 true scheduler-ir :PID))
 
-                             (spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (:ir (fset/boolencode 10 3 true scheduler-ir :PID))))
+  (spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (:ir (fset/boolencode 10 3 true scheduler-ir :PID))))
 
-                             (clojure.pprint/pprint (transform scheduler-ir :PID))
+  (pprint (transform scheduler-ir :PID))
 
-                             (clojure.pprint/pprint scheduler-ir)
+  (clojure.pprint/pprint scheduler-ir)
 
-                             (util/get-assigns-by-id scheduler-ir :active)
+  (util/get-assigns-by-id scheduler-ir :active)
 
-                             (ir->b (transform scheduler-ir :PID))
+  (ir->b (transform scheduler-ir :PID))
 
-                             (ir->b {:tag :machine, :variant {:tag :machine-variant}, :header {:tag :machine-header, :name :Empty, :parameters []}, :clauses '({:tag :init
-                                                                                                                                                                :substitution {:tag :parallel-substitution
-                                                                                                                                                                               :substitutions ()}})})
+  (ir->b {:tag :machine, :variant {:tag :machine-variant}, :header {:tag :machine-header, :name :Empty, :parameters []}, :clauses '({:tag :init
+                                                                                                                                     :substitution {:tag :parallel-substitution
+                                                                                                                                                    :substitutions ()}})})
 
-                             (def test-lisb
-                               '(for [v '(:PID1 :PID2 :PID3)]
-                                  (bor v :active)))
+  (def test-lisb
+    '(for [v '(:PID1 :PID2 :PID3)]
+       (bor v :active)))
 
-                             (def vars {:active [:activePID1 :activePID2 :activePID3] :ready [:readyPID1 :readyPID2 :readyPID3] :waiting [:waitingPID1 :waitingPID2 :waitingPID3]})
+  (def vars {:active [:activePID1 :activePID2 :activePID3] :ready [:readyPID1 :readyPID2 :readyPID3] :waiting [:waitingPID1 :waitingPID2 :waitingPID3]})
 
-                             (defn ors [_] [[:activePID1 :readyPID1] [:activePID2 :readyPID2] [:activePID3 :readyPID3]])
+  (defn ors [_] [[:activePID1 :readyPID1] [:activePID2 :readyPID2] [:activePID3 :readyPID3]])
 
-                             (ir->b {:tag :and
-                                     :predicates (lisb->ir '(for [[l r] (ors vars)] (= (bpred->bool (bor (= l true) (= r true))) false)))})))
+  (ir->b {:tag :and
+          :predicates (lisb->ir '(for [[l r] (ors vars)] (= (bpred->bool (bor (= l true) (= r true))) false)))}))
