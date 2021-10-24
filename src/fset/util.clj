@@ -66,13 +66,17 @@
   [u]
   (first (s/select [INVAR] u)))
 
+(defn get-invariants
+  [u]
+  (s/select [INVAR :values s/ALL] u))
+
 (defn get-invariant-as-pred
   [u]
   {:tag :and :predicates (apply list (s/select [INVAR :values s/ALL] u))})
 
 (defn get-properties
   [u]
-  (s/select [PROPERTIES] u))
+  (first (s/select [PROPERTIES] u)))
 
 (defn get-target-sets
   [u]
@@ -85,6 +89,10 @@
 (defn get-operations
   [u]
   (s/select [OPERATIONS :values s/ALL] u))
+
+(defn get-op
+  [u op-id]
+  (first (s/select [OPERATIONS :values s/ALL #(= (:name %) op-id)] u)))
 
 (defn get-sets
   [u]
@@ -245,3 +253,30 @@
 (defn clear-empty-sets
   [u]
   (s/setval [INVAR :values s/ALL #(= % {})] s/NONE u))
+
+(defn get-constants
+  [u]
+  (s/select [(CLAUSE :constants) :values s/ALL] u))
+
+(defn get-vars-and-constants
+  [u]
+  (let [vars (get-vars u)
+        constants (get-constants u)]
+    (concat vars constants)))
+
+(defn get-invariant-and-properties-as-pred
+  [u]
+  (let [invar-preds (:values (get-invariant u))
+        prop-preds (:values (get-properties u))]
+    {:tag :and
+     :predicates (concat invar-preds prop-preds)}))
+
+;; FIXME
+(defn add-bool-vars
+  [u bools]
+  u)
+
+;; FIXME
+(defn add-operations
+  [u]
+  u)

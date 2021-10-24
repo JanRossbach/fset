@@ -1,68 +1,57 @@
 (ns fset.transformations
   (:require
    [clojure.core.match :refer [match]]
-   [fset.backend :as b]
-   [lisb.translation.util :refer [lisb->ir]]
-   [fset.util :as util]))
+   [lisb.translation.util :refer [ir->b lisb->ir]]))
 
-(defn bool-typedefs
-  [u var]
-  (let [elems (util/get-var-elems u var)]
-    {:tag :and
-     :predicates (lisb->ir
-                  `(map #(lisb.translation.lisb2ir/bmember? % :BOOL) ~elems))}))
+(defn gen-bool-typedefs
+  [elems]
+  {:tag :and
+   :predicates (map (fn [el] {:tag :member :element el :set :BOOL}) elems)})
+
+(defn type?
+  [expr]
+  (match expr
+    (_ :guard keyword?) true
+    {:tag :power-set :set (_ :guard type?)} true
+    {:tag :power1-set :set (_ :guard type?)} true
+    {:tag :fin-set :set (_ :guard type?)} true
+    {:tag :fin1-set :set (_ :guard type?)} true
+    _ false))
+
+(defn typedef? [expr]
+  (match expr
+         {:tag :member :element (_ :guard keyword?) :set (_ :guard type?)} true
+         {:tag :subset :subset (_ :guard keyword?) :set (_ :guard type?)} true
+         _ false))
+
+
+;; NOTE: POW(EXPR) is not supported, since the powerset can not be factored out POW(A /\ B) /= POW(A) /\ POW(B)
+;; NOTE: Cardinality not yet supported, because it's a pain in the ass...
 
 (defn predicate
-  [u p]
-  (let [ids (util/get-target-set-ids u)
-        id (first ids)]
-    (match p
-      {:tag :and :predicates ps} {:tag :and :predicates (map (partial predicate u) ps)}
-      {:tag :member :element e :set {:tag :power-set :set id}} (bool-typedefs u e)
-      {:tag :subset :subset v :set id} (bool-typedefs u v)
-      {:tag :equal :left l :right #{}} {}
-      {:tag :equal :left #{} :right r} {}
-      _ p)))
+  "Takes a B Predicate, that is not a type definition, and a collection of elements, and returns
+  a collection of predicates that represent the unrolled expression."
+  [expr elems]
+  ((fn T [e]
+     (match e
+       ;; equality
+       {:tag :equal :left l :right #{}} (list {:tag :and :predicates (map (fn [p] {:tag :not :predicate p}) (T l))})
+       {:tag :equal :left #{} :right r} (list {:tag :and :predicates (map (fn [p] {:tag :not :predicate p}) (T r))})
+       {:tag :equal :left l :right r} (list {:tag :equivalence :predicates (list {:tag :and :predicates (T l)} {:tag :and :predicates (T r)})})
+       {:tag :not-equal :left l :right r} (list {:tag :not :predicate (T (first {:tag :equal :left l :right r}))})
+       ;; logical operators
+       {:tag :and :predicates ps} (list {:tag :and :predicates (mapcat T ps)})
+       {:tag :or :predicates ps} (list {:tag :or :predicates (mapcat T ps)})
+       {:tag :not :predicate p} (map #(constantly {:tag :not :predicate %}) (T p))
+       {:tag :equivalence :predicates ([A B] :seq)} (list {:tag :equivalence :predicates (list {:tag :and :predicates (T A)} {:tag :and :predicates (T B)})})
+       {:tag :implication :predicates ([A B] :seq)} (list {:tag :implication :predicates (list {:tag :and :predicates (T A)} {:tag :and :predicates (T B)})})
 
-(defn variable?
-  [u id]
-  (some #(= % id) (util/get-vars u)))
+       ;; binary-set-operators
+       {:tag :union :sets ([A B] :seq)} (map (fn [a b] {:tag :or :predicates (list a b)}) (T A) (T B))
+       {:tag :intersection :sets ([A B] :seq)} (map (fn [a b] {:tag :and :predicates (list a b)}) (T A) (T B))
+       {:tag :general-union :set-of-sets ss} (apply (partial map (fn [& s] {:tag :or :predicates s})) (map T ss))
+       {:tag :general-intersection :set-of-sets ss} (apply (partial map (fn [& s] {:tag :and :predicates s})) (map T ss))
+       {:tag :difference :sets ([A B] :seq)} {:tag :and :predicates (list (T A) {:tag :not :predicate (T B)})}
 
-(defn union
-  [_ s1 s2]
-  {:tag :union
-   :sets (list s1 s2)})
-
-(defn expression
-  [u e]
-  (let [set-ids (util/get-set-ids u)]
-    (match e
-           {:tag :union :sets ([s1 s2] :seq)} (union u s1 s2)
-           _ e)))
-
-(expression {} :active)
-
-(defn- op-predicate
-  [u pred]
-  pred)
-
-(defn- op-substitution
-  [u assign]
-  assign)
-
-(defn- select-body
-  [pred assign & r]
-  (list pred assign))
-
-(defn body
-  [u body]
-  (match body
-    {:tag :select :clauses ([pred assign & r] :seq)} {:tag :select :clauses (apply (partial select-body pred assign) r)}
-    _ body))
-
-(defn substitution
-  [u sub]
-  (match sub
-    {:tag :parallel-substitution :substitutions s} {:tag :parallel-substitution
-                                                    :substitutions (map (partial substitution u) s)}
-    _ sub))
+       ;; leaf node
+       (A :guard type?) (map (fn [x] {:tag :member :element x :set A}) elems))) expr))

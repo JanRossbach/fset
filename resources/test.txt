@@ -1,0 +1,1 @@
+not(PID1:ready & PID2:ready & PID3:ready or (PID1:waiting & PID2:waiting & PID3:waiting)) & not(PID1:active & PID2:active & PID3:active or (PID1:ready & PID2:ready & PID3:ready & (PID1:waiting & PID2:waiting & PID3:waiting))) & card(active)<=1 & (not(PID1:active & PID2:active & PID3:active) => not(PID1:ready & PID2:ready & PID3:ready))

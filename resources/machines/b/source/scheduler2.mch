@@ -1,5 +1,6 @@
-REFINEMENT scheduler_BOOL
-REFINES scheduler
+MACHINE scheduler
+SETS
+  PID = {PID1, PID2, PID3}
 VARIABLES active_PID1, active_PID2, active_PID3
 PROPERTIES actvie_PID1 : BOOL & active_PID2 : BOOL & active_PID3 : BOOL
 INVARIANT active_PID1 <=> bool(PID1 : active) &
