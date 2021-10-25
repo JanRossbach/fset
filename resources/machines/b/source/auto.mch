@@ -1,10 +1,7 @@
 MACHINE scheduler
 SETS PID={PID1,PID2,PID3}
 VARIABLES active, ready, waiting
-INVARIANT active:POW(PID) & ready:POW(PID) & waiting:POW(PID) &
-	   (not(PID1:ready & PID1:waiting) & not(PID2:ready & PID2:waiting) & not(PID3:ready & PID3:waiting)) &
-	   (not(PID1:active & (PID1:ready or PID1:waiting)) & not(PID2:active & (PID2:ready or PID2:waiting)) & not(PID3:active & (PID3:ready or PID3:waiting))) &
-                   (PID1/:active & PID2/:active & PID3/:active => PID1/:ready & PID2/:ready & PID3/:ready)
+INVARIANT active:POW(PID) & ready:POW(PID) & waiting:POW(PID) & not(PID1:ready & PID1:waiting) & not(PID2:ready & PID2:waiting) & not(PID3:ready & PID3:waiting) & not(PID1:active & (PID1:ready or PID1:waiting)) & not(PID2:active & (PID2:ready or PID2:waiting)) & not(PID3:active & (PID3:ready or PID3:waiting)) & (PID1/:active & PID2/:active & PID3/:active => PID1/:ready & PID2/:ready & PID3/:ready)
 INITIALISATION active := {} || ready := {} || waiting := {}
 OPERATIONS
 rr <-- nr_ready = rr := card(ready);

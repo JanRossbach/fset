@@ -14,7 +14,7 @@ INVARIANT
            (ready /\ waiting) = {} &
            active /\ (ready \/ waiting) = {} &
            card(active) <= 1 &
-           ((active = {})  => (ready = {}))
+           ((active = {})  => (ready = {})
 
 INITIALISATION
     active := {} || ready := {} || waiting := {}

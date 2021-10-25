@@ -9,7 +9,8 @@ INVARIANT
            active : POW(PID) & ready : POW(PID) & waiting: POW(PID) &/* the types */
            (ready /\ waiting) = {} &
            active /\ (ready \/ waiting) = {} &
-           ((active = {})  => (ready = {}))
+           ((active = {})  => (ready = {})) &
+           (waiting - {PID1}) = {PID2}
 
 INITIALISATION
     active := {} || ready := {} || waiting := {}
