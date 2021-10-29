@@ -4,7 +4,6 @@
    [clojure.core.match :refer [match]]
    [fset.transformations :as T]
    [fset.core :as fset]
-   [fset.varencode :as v]
    [fset.backend :as b]
    [lisb.prob.animator :refer [state-space!]]
    [clojure.pprint :refer [pprint]]
@@ -18,6 +17,46 @@
 (def train-ir (b->ir (slurp "resources/machines/b/source/Train_1_beebook_TLC.mch")))
 
 (def train-ss (b/get-statespace train-ir))
+
+(b/get-type train-ss :rtbl)
+
+(pprint (first (util/get-operations train-ir)))
+
+(pprint train-ir)
+
+
+(def items-ir (b->ir (slurp "resources/machines/b/source/Items.mch")))
+(def items-ss (b/get-statespace items-ir))
+
+
+
+(def p {:tag :and :predicates '({:tag :member, :element :i, :set :items}
+                                {:tag :member :element :j :set :items}
+                                {:tag :subset :subset :items
+                                 :set {:tag :interval :from 1 :to 10}})})
+
+(def p1 {:tag :equivalence, :predicates '({:tag :intersection, :sets (:a :b)}
+                                         {:tag :member, :element :x, :set {:tag :union, :sets (:a :b)}})})
+
+(b/get-possible-var-states items-ss '(:i :j) '(:items) p)
+
+(ir->b (first (T/unroll-predicate p1 '(:x :y :z))))
+
+
+(lisb->ir '(<=> (intersection :a :b) (member? :x (union :a :b))))
+
+
+(pprint items-ir)
+
+(defn unroll-op
+  [ir]
+  (let [op (first (util/get-operations ir))
+        {:keys [return parameters body name]} op
+        pred (first (:clauses body))]
+    pred))
+
+(unroll-op items-ir)
+
 
 
 (def fe-ir (lisb->ir (b->lisb (slurp "resources/machines/b/source/func_extract.mch"))))

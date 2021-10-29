@@ -280,3 +280,7 @@
 (defn add-operations
   [u]
   u)
+
+(defn involves?
+  [id ir]
+  (seq (s/select (s/walker #(= % id))  ir)))
