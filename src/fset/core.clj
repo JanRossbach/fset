@@ -2,11 +2,12 @@
   (:require
    [potemkin :refer [import-vars]]
    [clojure.core.match :refer [match]]
+   [fset.dsl :refer [AND OR =TRUE =FALSE <=> NOT IN TRUE FALSE EQUAL => BOOL]]
    [fset.util :as u]
    [clojure.spec.alpha :as spec]
    [fset.specs :refer :all]
-   [com.rpl.specter :as s]))
-
+   [com.rpl.specter :as s]
+   [fset.backend :as b]))
 
 (import-vars [])
 
@@ -21,17 +22,10 @@
                           {:universe u}))))
     u))
 
-
 (defn gen-bool-typedefs
   [elems]
   {:tag :and
    :predicates (map (fn [el] {:tag :member :element el :set :BOOL}) elems)})
-
-(defn typedef? [expr]
-  (match expr
-    {:tag :member :element (_ :guard keyword?) :set (_ :guard type?)} true
-    {:tag :subset :subset (_ :guard keyword?) :set (_ :guard type?)} true
-    _ false))
 
 (defn type?
   [expr]
@@ -43,77 +37,98 @@
     {:tag :fin1-set :set (_ :guard type?)} true
     _ false))
 
+(defn variable?
+  [id]
+  true)
+
+(defn typedef? [expr]
+  (match expr
+    {:tag :member :element (_ :guard keyword?) :set (_ :guard type?)} true
+    {:tag :subset :subset (_ :guard keyword?) :set (_ :guard type?)} true
+    _ false))
+
+
+
+(defn unrollable? [id]
+  true)
+
+(defn boolname
+  [var-id el-id]
+  (keyword (str (name var-id) (name el-id))))
+
+(defn unroll-set-expression
+  "Takes a expression of the set type and a seq of elems and unrolls them into a seq of B predicates in IR form.
+  The returned seq will always have the same cardinality as the elems seq and each formula will correspond to exactly that element."
+  [elems expr]
+  ((fn T [e]
+     (match e
+       #{} (repeat (=TRUE :FALSE) (count elems))
+       (S :guard #(and (set? %) (= 1 (count %)))) (let [x (first S)] (map (fn [el] (if (= el x) TRUE FALSE)) elems)) ;; Singleton Set
+       (S :guard set?) (map (fn [el] (if (some #(= el %) S) TRUE FALSE)) elems)
+       {:tag :set-enum :elements els} (T (set els))
+       {:tag :comp-set} e;; FIXME
+       {:tag :union :sets ([A B] :seq)} (map (fn [a b] (OR a b)) (T A) (T B))
+       {:tag :intersection :sets ([A B] :seq)} (map (fn [a b] (AND a b)) (T A) (T B))
+       {:tag :difference :sets ([A B] :seq)} (AND (T A) (NOT  (T B)))
+       {:tag :general-union :set-of-sets ss} (apply (partial map OR) (map T ss))
+       {:tag :general-intersection :set-of-sets ss} (apply (partial map AND) (map T ss))
+       (ID :guard #(and (variable? %) (unrollable? %))) (map (fn [el] (=TRUE (boolname ID el))) elems)
+       (ID :guard type?) (map (partial IN ID) elems)))
+   expr))
+
+(defn unroll-predicate
+  "Takes a B predicate of type POW(S), that is not a type definition, and a collection of elements, and returns
+  a collection of predicates that represent the unrolled expression."
+  [pred]
+  (let [elems '(:PID1 :PID2 :PID3)]
+    ((fn T [e]
+       (match e
+         ;; equality
+         {:tag :equal :left l :right #{}} (map NOT (T l))
+         {:tag :equal :left #{} :right r} (map NOT (T r))
+         {:tag :equal :left l :right r} (map <=> (T l) (T r))
+         {:tag :not-equal :left l :right r} (map NOT (T (EQUAL l r)))
+         {:tag :subset :subset s :set S} (map (fn [a b] (=> a b)) (T s) (T S))
+         {:tag :subset-strict :subset s :set S} (let [Ts (T s) TS (T S)] (cons (apply OR (map (fn [a b] (AND a (NOT b))) Ts TS))
+                                                                               (map (fn [a b] (=> a b)) Ts TS)))
+         ;; logical operators
+         {:tag :and :predicates ps} (list (apply AND (mapcat T ps)))
+         {:tag :or :predicates ps} (list (apply OR (mapcat T ps)))
+         {:tag :not :predicate p} (map NOT (T p))
+         {:tag :equivalence :predicates ([A B] :seq)} (list (<=> (apply AND (T A)) (apply AND (T B))))
+         {:tag :implication :predicates ([A B] :seq)} (list (=> (apply AND (T A)) (apply AND (T B))))
+         {:tag :member :element x :set s} (T {:tag :subset :subset x :set (:set s)})
+         expr (unroll-set-expression elems expr)))
+     pred)))
+
+(defn unroll-substitution
+  [sub]
+  (let [elems '(:PID1 :PID2 :PID3)]
+    ((fn T [e]
+       (match e
+         {:tag :skip} {:tag :skip}
+         {:tag :assign :identifiers identifiers :values values} {:tag :assign :identifiers (map :left (mapcat T identifiers)) :values (map BOOL (mapcat T values))}
+         expr (unroll-set-expression elems expr)))
+     sub)))
 
 (defn boolencode
   [ir]
-  (let [x 1
-        ] ;; Setup
+  (let [;;ss (b/get-statespace ir)
+        ;;var-ids (u/get-vars ir)
+        vars [:a :b]]  ;; Setup
     ((fn T [e] ;; Recursion through the machine tree
        (match e
-              ;; Logical predicates
-         {:tag :and :predicates ps} (list {:tag :and :predicates (mapcat T ps)})
-         {:tag :or :predicatescates ps} (list {:tag :or :predicates (mapcat T ps)})
-         {:tag :implication :predicates ([A B] :seq)} (list {:tag :implication :predicates (list {:tag :and :predicates (T A)} {:tag :and :predicates (T B)})})
-         {:tag :equivalence :predicates ([A B] :seq)} (list {:tag :equivalence :predicates (list {:tag :and :predicates (T A)} {:tag :and :predicates (T B)})})
-         {:tag :not :predicate p} (map (fn [pp] {:tag :not :predicate pp}) (T p))
-         {:tag :for-all} e ;; FIXME
-         {:tag :exists} e ;; FIXME
-
-         ;; Equality
-         {:tag :equal :left l :right #{}} (map (fn [p] {:tag :not :predicate p}) (T l))
-         {:tag :equal :left #{} :right r} (map (fn [p] {:tag :not :predicate p}) (T r))
-         {:tag :equal :left l :right r} (map (fn [a b] {:tag :equivalence :predicates (list a b)}) (T l) (T r))
-         {:tag :not-equal :left l :right r} (map (fn [p] {:tag :not :predicate p}) (T {:tag :equal :left l :right r}))
-
-         ;; Booleans
-         :TRUE :TRUE
-         :FALSE :FALSE
-         :BOOL #{:TRUE :FALSE}
-         {:tag :pred->bool} e;; FIXME
-
-         ;; SETS
-         #{} (throw (ex-info "Empty set got matched" {:e e}))
-         {:tag :singleton-set} e;; FIXME
-         {:tag :enumeration} e;; FIXME
-         {:tag :comp-set} e;; FIXME
-         {:tag :power-set :set (_ :guard type?)} e
-         {:tag :power1-set :set (_ :guard type?)} e
-         {:tag :fin-set :set (_ :guard type?)} e
-         {:tag :fin1-set :set (_ :guard type?)} e
-         {:tag :cardinality} e;; FIXME
-         {:tag :cartesion} e;; FIXME
-         {:tag :union :sets ([A B] :seq)} (map (fn [a b] {:tag :or :predicates (list a b)}) (T A) (T B))
-         {:tag :intersection :sets ([A B] :seq)} (map (fn [a b] {:tag :and :predicates (list a b)}) (T A) (T B))
-         {:tag :difference :sets ([A B] :seq)} {:tag :and :predicates (list (T A) {:tag :not :predicate (T B)})}
-         {:tag :member, :element el, :set A} (filter #((partial u/involves? el) %) (T A))
-         {:tag :subset :subset s :set S} (map (fn [a b] {:tag :implication :predicates (list a b)}) (T s) (T S))
-         {:tag :subset-strict :subset s :set S} (let [Ts (T s) TS (T S)] (cons {:tag :or :predicates (map (fn [a b] {:tag :and :predicates (list {:tag :not :predicate a} b)}) Ts TS)}
-                                                                               (map (fn [a b] {:tag :implication :predicates (list a b)}) Ts TS)))
-         {:tag :general-union :set-of-sets ss} (apply (partial map (fn [& s] {:tag :or :predicates s})) (map T ss))
-         {:tag :general-intersection :set-of-sets ss} (apply (partial map (fn [& s] {:tag :and :predicates s})) (map T ss))
-
-         ;; FIXME
-         ;; Numbers
-         ;; Relations
-         ;; Functions
-         ;; Sequences
-         ;; Records
-         ;; Strings
-         ;; Reals
-         ;; Trees
-         ;; LET and IF-THEN-ELSE
-
-         ;; Statements
-
          ;; Machine sections
          {:tag :machine :clauses c :name n} {:tag :machine :clauses (map T c) :name n}
          {:tag :sets  :values _} e
          {:tag :constants :values _} e
          {:tag :variables :values v} {:tag :variables :values (mapcat T v)}
+         {:tag :invariants :values v} {:tag :invariants :values (mapcat unroll-predicate (filter unrollable-pred? v))}
          {:tag :properties :values _} e
-         {:tag :operations :values v} {:tag :operations :values (mapcat T v)}
+         {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation (filter unrollable-op?) v)}
 
          ;; leaf node
-         (A :guard type?) (map (fn [x] {:tag :member :element x :set A}) elems)
+         (A :guard type?) (map (fn [x] {:tag :member :element x :set A}) vars)
+         (A :guard variable?) e ;; FIXME
          _ e))
      ir)))

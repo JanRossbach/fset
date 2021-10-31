@@ -7,7 +7,6 @@
                  [org.clojure/core.match "1.0.0"]
                  [potemkin "0.4.5"]
                  [org.clojars.pkoerner/lisb "0.0.2-SNAPSHOT"]
-                 [org.clojure/clojure "1.10.1"]
-                 [net.mikera/vectorz-clj "0.48.0"]]
+                 [org.clojure/clojure "1.10.1"]]
   :plugins [[lein-cloverage "1.2.2"]]
   :repl-options {:init-ns fset.core})

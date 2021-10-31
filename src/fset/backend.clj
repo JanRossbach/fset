@@ -56,3 +56,8 @@
   (into #{}
         (for [r api-result]
           (into #{} (map (fn [s] (keyword (str (name var) s)))  r)))))
+
+(defn make-var
+  [ss var-id]
+  {:id var-id
+   })
