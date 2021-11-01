@@ -109,3 +109,5 @@
 (ir->b (filter util/involves? :PID1 (fset/unroll-substitution (lisb->ir '(assign :active #{:PID1 :PID2} :waiting #{:PID3 :PID1})))))
 
 (fset/unroll-substitution (lisb->ir '(assign :active #{:PID1 :PID2} :waiting #{:PID3 :PID1})))
+
+(fset/boolencode scheduler-ir)

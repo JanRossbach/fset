@@ -59,3 +59,9 @@
   {:tag :member
    :element el
    :set s})
+
+(defn BOOLDEF [el]
+  {:tag :member :element el :set :BOOL})
+
+(defn BOOLDEFS [els]
+  (apply AND (map BOOLDEF els)))

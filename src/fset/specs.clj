@@ -36,27 +36,7 @@
 
 ;; varencode
 
-
-(s/def :fset.varencode/id keyword?)
-(s/def :fset.varencode/type string?)
-(s/def :fset.varencode/base-set keyword?)
-(s/def :fset.varencode/size int?)
-(s/def :fset.varencode/bool map?)
-(s/def :fset.varencode/bools (s/coll-of :fset.varencode/bool))
-
-
-(s/def :fset.varencode/variable (s/keys :req-un [:fset.varencode/id
-                                                 :fset.varencode/type
-                                                 :fset.varencode/base-set
-                                                 :fset.varencode/size
-                                                 :fset.varencode/bools]))
-
-
-
-
-(s/def :fset/universe (s/keys :req-un [:lisb/ir
-                                       :lisb/statespace
-                                       :fset.varencode/variable]))
+(s/def :fset/app-db map?)
 
 ;; unrolling
 
