@@ -20,13 +20,19 @@
   (let [ss (b/get-statespace ir)
         vars '(:active :ready :waiting)
         unroll-vars '(:active :ready :waiting)
-        elem-map {"POW(PID)" '(:PID1 :PID2 :PID3)}]
+        elem-map {:active '(:PID1 :PID2 :PID3)
+                  :ready '(:PID1 :PID2 :PID3)
+                  :waiting '(:PID1 :PID2 :PID3)}]
     (reset!
      app-db
      {:ss ss
       :vars vars
       :unroll-vars unroll-vars
       :elem-map elem-map})))
+
+(defn involves?
+  [ir ids]
+  (seq (s/select [(s/walker (fn [w] (some #(= % w) ids)))] ir)))
 
 (defn type?
   [expr]
@@ -38,8 +44,28 @@
     {:tag :fin1-set :set (_ :guard type?)} true
     _ false))
 
+(defn unrollable-pred?
+  [_]
+  true)
+
+(defn unrollable-op?
+  [_]
+  true)
+
+(defn unrollable-var?
+  [_]
+  true)
+
+(defn enum-set?
+  [s]
+  true)
+
 (defn variable?
   [id]
+  true)
+
+(defn enumerable?
+  [s]
   true)
 
 (defn typedef? [expr]
@@ -47,9 +73,6 @@
     {:tag :member :element (_ :guard keyword?) :set (_ :guard type?)} true
     {:tag :subset :subset (_ :guard keyword?) :set (_ :guard type?)} true
     _ false))
-
-(defn unrollable? [id]
-  true)
 
 (defn boolname
   [var-id el-id]
@@ -59,7 +82,7 @@
   [id]
   (let [db @app-db
         elem-map (:elem-map db)]
-    (get id elem-map)))
+    (get elem-map id)))
 
 (defn get-expr-elems
   [expr]
@@ -67,26 +90,28 @@
         t (b/get-type ss expr)]
     (get t elem-map)))
 
-(defn unroll-set-expression
-  "Takes a expression of the set type and a seq of elems and unrolls them into a seq of B predicates in IR form.
-  The returned seq will always have the same cardinality as the elems seq and each formula will correspond to exactly that element."
-  [expr]
-  (let [elems (get-expr-elems expr)]
-    ((fn T [e]
-       (match e
-         #{} (repeat FALSE (count elems))
-         (S :guard #(and (set? %) (= 1 (count %)))) (let [x (first S)] (map (fn [el] (if (= el x) TRUE FALSE)) elems)) ;; Singleton Set
-         (S :guard set?) (map (fn [el] (if (some #(= el %) S) TRUE FALSE)) elems)
-         {:tag :set-enum :elements els} (T (set els))
-         {:tag :comp-set} e;; FIXME
-         {:tag :union :sets ([A B] :seq)} (map (fn [a b] (OR a b)) (T A) (T B))
-         {:tag :intersection :sets ([A B] :seq)} (map (fn [a b] (AND a b)) (T A) (T B))
-         {:tag :difference :sets ([A B] :seq)} (AND (T A) (NOT  (T B)))
-         {:tag :general-union :set-of-sets ss} (apply (partial map OR) (map T ss))
-         {:tag :general-intersection :set-of-sets ss} (apply (partial map AND) (map T ss))
-         (ID :guard #(and (variable? %) (unrollable? %))) (map (fn [el] (=TRUE (boolname ID el))) elems)
-         (ID :guard type?) (map (partial IN ID) elems)))
-     expr)))
+(defn unroll-variable
+  [var-id]
+  (if (unrollable-var? var-id)
+    (map (partial boolname var-id) (get-elems-by-id var-id))
+    (list var-id)))
+
+(defn boolvar
+  [var-id num]
+  (keyword (str (name var-id) num)))
+
+(defn set->bitvector
+  [elems Set]
+  ((fn T [e]
+     (match e
+       #{} (repeat (count elems) FALSE)
+       (singleton-set :guard #(and (set? %) (= 1 (count %)))) (let [x (first singleton-set)] (map (fn [e] (if (= e x) TRUE FALSE)) elems))
+       {:tag :union :sets ([A B] :seq)} (map (fn [a b] (OR a b)) (T A) (T B))
+       {:tag :intersection :sets ([A B] :seq)} (map (fn [a b] (AND a b)) (T A) (T B))
+       {:tag :difference :sets ([A B] :seq)} (map (fn [a b] (AND a (NOT b))) (T A) (T B))
+       (variable :guard variable?) (->> elems (map (partial boolname variable)) (map =TRUE))
+       _ e))
+   Set))
 
 (defn unroll-predicate
   "Takes a B predicate of type POW(S), that is not a type definition, and a collection of elements, and returns
@@ -108,52 +133,65 @@
        {:tag :not :predicate p} (map NOT (T p))
        {:tag :equivalence :predicates ([A B] :seq)} (list (<=> (apply AND (T A)) (apply AND (T B))))
        {:tag :implication :predicates ([A B] :seq)} (list (=> (apply AND (T A)) (apply AND (T B))))
-       {:tag :member :element x :set s} (T {:tag :subset :subset x :set (:set s)})
-       expr (unroll-set-expression expr)))
+       {:tag :member :element (v :guard variable?) :set _} (list (BOOLDEFS (unroll-variable v)))
+       (SET :guard enumerable?) (set->bitvector '(:PID1 :PID2 :PID3) SET)))
    pred))
 
-(defn unroll-substitution
-  [sub]
-  (let [elems '(:PID1 :PID2 :PID3)]
-    ((fn T [e]
-       (match e
-         {:tag :skip} {:tag :skip}
-         {:tag :assign :identifiers identifiers :values values} {:tag :assign :identifiers (map :left (mapcat T identifiers)) :values (map BOOL (mapcat T values))}
-         _ e))
-     sub)))
+(defn unroll-init-substitution
+  [elems sub]
+  ((fn T [e]
+     (match e
+       {:tag :skip} {:tag :skip}
+       {:tag :parallel-substitution :substitutions substitutions} {:tag :parallel-substitution :substitutions (map T substitutions)}
+       {:tag :assign :identifiers identifiers :values values} {:tag :assign :identifiers (mapcat unroll-variable identifiers) :values (map BOOL (mapcat (partial set->bitvector elems) values))}
+       _ e))
+   sub))
 
-(defn unrollable-pred?
-  [_]
-  true)
+(defn unroll-init
+  [{:keys [values]}]
+  (let [vars (:unroll-vars @app-db)]
+    (map (fn [v]
+           (if (involves? v vars)
+             (unroll-init-substitution (get-expr-elems v) v)
+             v))
+         values)))
 
-(defn unrollable-op?
-  [_]
-  true)
+(defn unroll-op-substitution
+  [elems elem-id body]
+  ((fn T [e]
+     (match e
+       {:tag :skip} {:tag :skip}
+       {:tag :parallel-substitution :substitutions substitutions} {:tag :parallel-substitution :substitutions (map T substitutions)}
+       {:tag :assign :identifiers identifiers :values values} {:tag :assign :identifiers (map (fn [var-id] (boolname var-id elem-id)) identifiers) :values (map BOOL (mapcat (partial set->bitvector elem-id) values))}
+       _ e))
+   body))
+
 
 (defn new-op
-  [old-op elem-id]
-  {:name :Test
+  [old-op elems elem-id]
+  {:name (boolname (:name old-op) elem-id)
    :return []
    :parameters []
-   :body (unroll-substitution (:body old-op))})
+   :body (unroll-op-substitution elems elem-id (:body old-op))})
 
 (defn unroll-operation
   [op]
   (let [elems '(:PID1 :PID2 :PID3)]
-    (map (partial new-op op) elems)))
+    (map (partial new-op op elems) elems)))
+
+
+(defn unroll-clause
+  [c]
+  (match c
+         {:tag :variables :values v} {:tag :variables :values (mapcat unroll-variable v)}
+         {:tag :invariants :values v} {:tag :invariants :values (mapcat unroll-predicate v)}
+         {:tag :init :values v} {:tag :init :values (unroll-init v)}
+         {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation v)}
+         _ c))
 
 (defn boolencode
   [ir]
   (init-db ir)
-  ((fn T [e] ;; Recursion through the machine tree
-     (match e
-              ;; Machine sections
-            {:tag :machine :clauses c :name n} {:tag :machine :clauses (map T c) :name n}
-            {:tag :sets  :values _} e
-            {:tag :constants :values _} e
-            {:tag :variables :values v} {:tag :variables :values v}
-            {:tag :invariants :values v} {:tag :invariants :values (mapcat unroll-predicate (filter unrollable-pred? v))}
-            {:tag :properties :values _} e
-            {:tag :init :values _} e
-            {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation (filter unrollable-op? v))}))
-     ir))
+  {:tag :machine
+   :name (:name ir)
+   :clauses (map unroll-clause (:clauses ir))})

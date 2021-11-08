@@ -1,67 +1,49 @@
-(ns fset.dsl)
+(ns fset.dsl
+  (:require
+   [lisb.translation.lisb2ir :refer [b= bpred->bool band bor bnot b<=> b=> bsubset? bmember?]]))
 
 (def TRUE
-  {:tag :equal
-   :left :TRUE
-   :right :TRUE})
+  (b= :TRUE :TRUE))
 
 (def FALSE
-  {:tag :equal
-   :left :FALSE
-   :right :TRUE})
+  (b= :TRUE :FALSE))
 
 (defn BOOL
   [p]
-  {:tag :pred->bool
-   :predicate p})
+  (bpred->bool p))
 
 (defn AND [& ps]
-  {:tag :and
-   :predicates ps})
+  (apply band ps))
 
 (defn OR [& ps]
-  {:tag :or
-   :predicates ps})
+  (apply bor ps))
 
 (defn NOT [p]
-  {:tag :not
-   :predicate p})
+  (bnot p))
 
 (defn <=> [& ps]
-  {:tag :equivalence
-   :predicates ps})
+  (apply b<=> ps))
 
 (defn => [& ps]
-  {:tag :implication
-   :predicates ps})
+  (apply b=> ps))
 
 (defn EQUAL [l r]
-  {:tag :equal
-   :left l
-   :right r})
+  (b= l r))
 
 (defn SUBSET [sub set]
-  {:tag :subset
-   :subset sub
-   :set set})
+  (bsubset? sub set))
 
 (defn =FALSE [p]
-  {:tag :equal
-   :left p
-   :right :FALSE})
+  (b= p :FALSE))
 
 (defn =TRUE [p]
-  {:tag :equal
-   :left p
-   :right :TRUE})
+  (b= p :TRUE))
 
 (defn IN [s el]
-  {:tag :member
-   :element el
-   :set s})
+  (bmember? el s))
 
 (defn BOOLDEF [el]
-  {:tag :member :element el :set :BOOL})
+  (bmember? el :BOOL))
 
 (defn BOOLDEFS [els]
   (apply AND (map BOOLDEF els)))
