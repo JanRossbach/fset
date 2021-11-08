@@ -21,6 +21,11 @@
   (testing "After the transformation the IR can be translated into a B machine."
     (is (string? (ir->b (boolencode scheduler-ir))))))
 
+(clojure.pprint/pprint (boolencode scheduler-ir))
+
+;; (ir->b (boolencode scheduler-ir))
+
+
 (def elems '(:PID1 :PID2 :PID3))
 
 (def empty-set '({:tag :equal, :left :TRUE, :right :FALSE} {:tag :equal, :left :TRUE, :right :FALSE} {:tag :equal, :left :TRUE, :right :FALSE}))

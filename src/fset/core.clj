@@ -20,6 +20,7 @@
   (let [ss (b/get-statespace ir)
         vars '(:active :ready :waiting)
         unroll-vars '(:active :ready :waiting)
+        unroll-ops '(:new)
         elem-map {:active '(:PID1 :PID2 :PID3)
                   :ready '(:PID1 :PID2 :PID3)
                   :waiting '(:PID1 :PID2 :PID3)}]
@@ -28,6 +29,7 @@
      {:ss ss
       :vars vars
       :unroll-vars unroll-vars
+      :unroll-ops unroll-ops
       :elem-map elem-map})))
 
 (defn involves?
@@ -49,8 +51,8 @@
   true)
 
 (defn unrollable-op?
-  [_]
-  true)
+  [op]
+  (some #(= % (:name op)) (:unroll-ops @app-db)))
 
 (defn unrollable-var?
   [_]
@@ -96,10 +98,6 @@
     (map (partial boolname var-id) (get-elems-by-id var-id))
     (list var-id)))
 
-(defn boolvar
-  [var-id num]
-  (keyword (str (name var-id) num)))
-
 (defn set->bitvector
   [elems Set]
   ((fn T [e]
@@ -109,6 +107,9 @@
        {:tag :union :sets ([A B] :seq)} (map (fn [a b] (OR a b)) (T A) (T B))
        {:tag :intersection :sets ([A B] :seq)} (map (fn [a b] (AND a b)) (T A) (T B))
        {:tag :difference :sets ([A B] :seq)} (map (fn [a b] (AND a (NOT b))) (T A) (T B))
+       {:tag :general-union :set-of-sets ss} (apply map OR (map T ss))
+       {:tag :general-intersection :set-of-sets ss} (apply map AND (map T ss))
+       {:tag :card} '()
        (variable :guard variable?) (->> elems (map (partial boolname variable)) (map =TRUE))
        _ e))
    Set))
@@ -134,6 +135,8 @@
        {:tag :equivalence :predicates ([A B] :seq)} (list (<=> (apply AND (T A)) (apply AND (T B))))
        {:tag :implication :predicates ([A B] :seq)} (list (=> (apply AND (T A)) (apply AND (T B))))
        {:tag :member :element (v :guard variable?) :set _} (list (BOOLDEFS (unroll-variable v)))
+       ;; TODO member clauses
+       {:tag :less-eq} (list e)
        (SET :guard enumerable?) (set->bitvector '(:PID1 :PID2 :PID3) SET)))
    pred))
 
@@ -148,11 +151,11 @@
    sub))
 
 (defn unroll-init
-  [{:keys [values]}]
+  [& values]
   (let [vars (:unroll-vars @app-db)]
     (map (fn [v]
            (if (involves? v vars)
-             (unroll-init-substitution (get-expr-elems v) v)
+             (unroll-init-substitution '(:PID1 :PID2 :PID3) v)
              v))
          values)))
 
@@ -162,30 +165,31 @@
      (match e
        {:tag :skip} {:tag :skip}
        {:tag :parallel-substitution :substitutions substitutions} {:tag :parallel-substitution :substitutions (map T substitutions)}
-       {:tag :assign :identifiers identifiers :values values} {:tag :assign :identifiers (map (fn [var-id] (boolname var-id elem-id)) identifiers) :values (map BOOL (mapcat (partial set->bitvector elem-id) values))}
+       {:tag :assign :identifiers identifiers :values values} {:tag :assign :identifiers (map (fn [var-id] (boolname var-id elem-id)) identifiers) :values (map BOOL (mapcat (partial set->bitvector (list elem-id)) values))}
+       {:tag :select :clauses ([A B & _] :seq)} {:tag :select :clauses (list (apply AND (unroll-predicate A)) (T B))}
        _ e))
    body))
-
 
 (defn new-op
   [old-op elems elem-id]
   {:name (boolname (:name old-op) elem-id)
    :return []
    :parameters []
-   :body (unroll-op-substitution elems elem-id (:body old-op))})
+   :body (unroll-op-substitution elems elem-id (:body old-op))}) ;; TODO replace param with elem-id
 
 (defn unroll-operation
   [op]
-  (let [elems '(:PID1 :PID2 :PID3)]
-    (map (partial new-op op elems) elems)))
-
+  (if (unrollable-op? op)
+    (let [elems '(:PID1 :PID2 :PID3)]
+      (map (partial new-op op elems) elems))
+    (list op)))
 
 (defn unroll-clause
   [c]
   (match c
          {:tag :variables :values v} {:tag :variables :values (mapcat unroll-variable v)}
          {:tag :invariants :values v} {:tag :invariants :values (mapcat unroll-predicate v)}
-         {:tag :init :values v} {:tag :init :values (unroll-init v)}
+         {:tag :init :values v} {:tag :init :values (mapcat unroll-init v)}
          {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation v)}
          _ c))
 
