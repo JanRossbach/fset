@@ -20,7 +20,7 @@
   (let [ss (b/get-statespace ir)
         vars '(:active :ready :waiting)
         unroll-vars '(:active :ready :waiting)
-        unroll-ops '(:new :del)
+        unroll-ops '(:new :del :ready)
         sets '(:PID)
         set-elems '(:PID1 :PID2 :PID3)
         elem-map {:active '(:PID1 :PID2 :PID3)
@@ -127,7 +127,8 @@ Take care, that all patterns are handled in set->bitvector" {:var-id var-id
        {:tag :difference :sets ([A B] :seq)} (map (fn [a b] (AND a (NOT b))) (T A) (T B))
        {:tag :general-union :set-of-sets ss} (apply map OR (map T ss))
        {:tag :general-intersection :set-of-sets ss} (apply map AND (map T ss))
-       {:tag :card :set s} {:tag :plus :numbers (map (fn [p] (IF (=TRUE (BOOL p)) 1 0)) (T s))} ;; Exception to the rule. We need to return a formula giving a single number.
+       {:tag :card :set s} {:tag :plus :numbers (map (fn [p] (IF (=TRUE (BOOL p)) 1 0)) (T s))}
+       {:tag :minus :numbers ns} (T {:tag :difference :sets ns})
        (n :guard number?) n
        (variable :guard variable?) (->> elems (map (partial boolname variable)) (map =TRUE))
        _ e))
@@ -189,6 +190,8 @@ Take care, that all patterns are handled in set->bitvector" {:var-id var-id
        {:tag :parallel-substitution :substitutions substitutions} {:tag :parallel-substitution :substitutions (map T substitutions)}
        {:tag :assign :identifiers identifiers :values values} {:tag :assign :identifiers (map (fn [var-id] (boolname var-id elem-id)) identifiers) :values (map BOOL (mapcat (partial set->bitvector (list elem-id)) values))}
        {:tag :select :clauses ([A B & _] :seq)} {:tag :select :clauses (list (apply AND (unroll-predicate A)) (T B))}
+       {:tag :if-sub :condition condition :then then :else else} {:tag :if-sub :condition (apply AND (unroll-predicate condition)) :then (T then) :else (T else)}
+       {:tag :any :identifiers identifiers :where where :then then} e ;; TODO
        _ e))
    body))
 

@@ -8,7 +8,11 @@ rr <-- nr_ready = rr := card(ready);
 newPID1 = SELECT not(bool(activePID1=TRUE)=TRUE) & not(bool(readyPID1=TRUE or waitingPID1=TRUE)=TRUE) THEN waitingPID1 := bool(waitingPID1=TRUE or TRUE=TRUE) END ;
 newPID2 = SELECT not(bool(activePID2=TRUE)=TRUE) & not(bool(readyPID2=TRUE or waitingPID2=TRUE)=TRUE) THEN waitingPID2 := bool(waitingPID2=TRUE or TRUE=TRUE) END ;
 newPID3 = SELECT not(bool(activePID3=TRUE)=TRUE) & not(bool(readyPID3=TRUE or waitingPID3=TRUE)=TRUE) THEN waitingPID3 := bool(waitingPID3=TRUE or TRUE=TRUE) END ;
-del(pp) = SELECT pp:waiting THEN waiting := waiting-{pp} END ;
-ready(rr) = SELECT rr:waiting THEN waiting := waiting-{rr} || IF active={} THEN active := {rr} ELSE ready := ready\/{rr} END  END ;
+delPID1 = SELECT bool(waitingPID1=TRUE)=TRUE THEN waitingPID1 := bool(waitingPID1=TRUE & not(TRUE=TRUE)) END ;
+delPID2 = SELECT bool(waitingPID2=TRUE)=TRUE THEN waitingPID2 := bool(waitingPID2=TRUE & not(TRUE=TRUE)) END ;
+delPID3 = SELECT bool(waitingPID3=TRUE)=TRUE THEN waitingPID3 := bool(waitingPID3=TRUE & not(TRUE=TRUE)) END ;
+readyPID1 = SELECT bool(waitingPID1=TRUE)=TRUE THEN waitingPID1 := bool(waitingPID1=TRUE & not(TRUE=TRUE)) || IF not(activePID1=TRUE) & not(activePID2=TRUE) & not(activePID3=TRUE) THEN activePID1 := bool(TRUE=TRUE) ELSE readyPID1 := bool(readyPID1=TRUE or TRUE=TRUE) END  END ;
+readyPID2 = SELECT bool(waitingPID2=TRUE)=TRUE THEN waitingPID2 := bool(waitingPID2=TRUE & not(TRUE=TRUE)) || IF not(activePID1=TRUE) & not(activePID2=TRUE) & not(activePID3=TRUE) THEN activePID2 := bool(TRUE=TRUE) ELSE readyPID2 := bool(readyPID2=TRUE or TRUE=TRUE) END  END ;
+readyPID3 = SELECT bool(waitingPID3=TRUE)=TRUE THEN waitingPID3 := bool(waitingPID3=TRUE & not(TRUE=TRUE)) || IF not(activePID1=TRUE) & not(activePID2=TRUE) & not(activePID3=TRUE) THEN activePID3 := bool(TRUE=TRUE) ELSE readyPID3 := bool(readyPID3=TRUE or TRUE=TRUE) END  END ;
 swap = SELECT active/={} THEN waiting := waiting\/active || IF ready={} THEN active := {} ELSE ANY pp WHERE pp:ready THEN active := {pp} || ready := ready-{pp} END  END  END 
 END
