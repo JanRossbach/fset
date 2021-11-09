@@ -1,22 +1,14 @@
 MACHINE scheduler
-VARIABLES activePID3, activePID1, activePID2, readyPID3, readyPID1, readyPID2, waitingPID3, waitingPID1, waitingPID2
 SETS PID={PID1,PID2,PID3}
-INVARIANT activePID3:BOOL & activePID1:BOOL & activePID2:BOOL & (readyPID3:BOOL & readyPID1:BOOL & readyPID2:BOOL) & (waitingPID3:BOOL & waitingPID1:BOOL & waitingPID2:BOOL) & (activePID3:BOOL & activePID1:BOOL & activePID2:BOOL) & (readyPID3:BOOL & readyPID1:BOOL & readyPID2:BOOL) & (waitingPID3:BOOL & waitingPID1:BOOL & waitingPID2:BOOL) & card(active)<=1 & (active={} => ready={})
-INITIALISATION active := {} || ready := {} || waiting := {}
+VARIABLES activePID1, activePID2, activePID3, readyPID1, readyPID2, readyPID3, waitingPID1, waitingPID2, waitingPID3
+INVARIANT activePID1:BOOL & activePID2:BOOL & activePID3:BOOL & (readyPID1:BOOL & readyPID2:BOOL & readyPID3:BOOL) & (waitingPID1:BOOL & waitingPID2:BOOL & waitingPID3:BOOL) & (activePID1=TRUE => PIDPID1=TRUE) & (activePID2=TRUE => PIDPID2=TRUE) & (activePID3=TRUE => PIDPID3=TRUE) & (readyPID1=TRUE => PIDPID1=TRUE) & (readyPID2=TRUE => PIDPID2=TRUE) & (readyPID3=TRUE => PIDPID3=TRUE) & (waitingPID1=TRUE => PIDPID1=TRUE) & (waitingPID2=TRUE => PIDPID2=TRUE) & (waitingPID3=TRUE => PIDPID3=TRUE) & not(readyPID1=TRUE & waitingPID1=TRUE) & not(readyPID2=TRUE & waitingPID2=TRUE) & not(readyPID3=TRUE & waitingPID3=TRUE) & not(activePID1=TRUE & (readyPID1=TRUE or waitingPID1=TRUE)) & not(activePID2=TRUE & (readyPID2=TRUE or waitingPID2=TRUE)) & not(activePID3=TRUE & (readyPID3=TRUE or waitingPID3=TRUE)) & IF bool(activePID1=TRUE)=TRUE THEN 1 ELSE 0 END+IF bool(activePID2=TRUE)=TRUE THEN 1 ELSE 0 END+IF bool(activePID3=TRUE)=TRUE THEN 1 ELSE 0 END<=1 & (not(activePID1=TRUE) & not(activePID2=TRUE) & not(activePID3=TRUE) => not(readyPID1=TRUE) & not(readyPID2=TRUE) & not(readyPID3=TRUE))
+INITIALISATION activePID1,activePID2,activePID3 := bool(TRUE=FALSE),bool(TRUE=FALSE),bool(TRUE=FALSE) || readyPID1,readyPID2,readyPID3 := bool(TRUE=FALSE),bool(TRUE=FALSE),bool(TRUE=FALSE) || waitingPID1,waitingPID2,waitingPID3 := bool(TRUE=FALSE),bool(TRUE=FALSE),bool(TRUE=FALSE)
 OPERATIONS
-rr <-- nr_readyPID3 = rr := card(ready);
-rr <-- nr_readyPID1 = rr := card(ready);
-rr <-- nr_readyPID2 = rr := card(ready);
-newPID3 = SELECT pp:PID & pp/:active & pp/:ready\/waiting THEN waiting := waiting\/{pp} END ;
-newPID1 = SELECT pp:PID & pp/:active & pp/:ready\/waiting THEN waiting := waiting\/{pp} END ;
-newPID2 = SELECT pp:PID & pp/:active & pp/:ready\/waiting THEN waiting := waiting\/{pp} END ;
-delPID3 = SELECT pp:waiting THEN waiting := waiting-{pp} END ;
-delPID1 = SELECT pp:waiting THEN waiting := waiting-{pp} END ;
-delPID2 = SELECT pp:waiting THEN waiting := waiting-{pp} END ;
-readyPID3 = SELECT rr:waiting THEN waiting := waiting-{rr} || IF active={} THEN active := {rr} ELSE ready := ready\/{rr} END  END ;
-readyPID1 = SELECT rr:waiting THEN waiting := waiting-{rr} || IF active={} THEN active := {rr} ELSE ready := ready\/{rr} END  END ;
-readyPID2 = SELECT rr:waiting THEN waiting := waiting-{rr} || IF active={} THEN active := {rr} ELSE ready := ready\/{rr} END  END ;
-swapPID3 = SELECT active/={} THEN waiting := waiting\/active || IF ready={} THEN active := {} ELSE ANY pp WHERE pp:ready THEN active := {pp} || ready := ready-{pp} END  END  END ;
-swapPID1 = SELECT active/={} THEN waiting := waiting\/active || IF ready={} THEN active := {} ELSE ANY pp WHERE pp:ready THEN active := {pp} || ready := ready-{pp} END  END  END ;
-swapPID2 = SELECT active/={} THEN waiting := waiting\/active || IF ready={} THEN active := {} ELSE ANY pp WHERE pp:ready THEN active := {pp} || ready := ready-{pp} END  END  END 
+rr <-- nr_ready = rr := card(ready);
+newPID1 = SELECT not(bool(activePID1=TRUE)=TRUE) & not(bool(readyPID1=TRUE or waitingPID1=TRUE)=TRUE) THEN waitingPID1 := bool(waitingPID1=TRUE or TRUE=TRUE) END ;
+newPID2 = SELECT not(bool(activePID2=TRUE)=TRUE) & not(bool(readyPID2=TRUE or waitingPID2=TRUE)=TRUE) THEN waitingPID2 := bool(waitingPID2=TRUE or TRUE=TRUE) END ;
+newPID3 = SELECT not(bool(activePID3=TRUE)=TRUE) & not(bool(readyPID3=TRUE or waitingPID3=TRUE)=TRUE) THEN waitingPID3 := bool(waitingPID3=TRUE or TRUE=TRUE) END ;
+del(pp) = SELECT pp:waiting THEN waiting := waiting-{pp} END ;
+ready(rr) = SELECT rr:waiting THEN waiting := waiting-{rr} || IF active={} THEN active := {rr} ELSE ready := ready\/{rr} END  END ;
+swap = SELECT active/={} THEN waiting := waiting\/active || IF ready={} THEN active := {} ELSE ANY pp WHERE pp:ready THEN active := {pp} || ready := ready-{pp} END  END  END 
 END

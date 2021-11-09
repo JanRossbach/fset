@@ -2,7 +2,7 @@
   (:require
    [potemkin :refer [import-vars]]
    [clojure.core.match :refer [match]]
-   [fset.dsl :refer [AND OR =TRUE =FALSE <=> NOT IN TRUE FALSE EQUAL => BOOL BOOLDEFS]]
+   [fset.dsl :refer [AND OR =TRUE =FALSE <=> NOT IN TRUE FALSE EQUAL => BOOL BOOLDEFS IF]]
    [fset.util :as u]
    [clojure.spec.alpha :as spec]
    [fset.specs :refer :all]
@@ -20,26 +20,40 @@
   (let [ss (b/get-statespace ir)
         vars '(:active :ready :waiting)
         unroll-vars '(:active :ready :waiting)
-        unroll-ops '(:new)
+        unroll-ops '(:new :del)
+        sets '(:PID)
+        set-elems '(:PID1 :PID2 :PID3)
         elem-map {:active '(:PID1 :PID2 :PID3)
                   :ready '(:PID1 :PID2 :PID3)
                   :waiting '(:PID1 :PID2 :PID3)}]
     (reset!
      app-db
      {:ss ss
+      :sets sets
+      :set-elems set-elems
       :vars vars
       :unroll-vars unroll-vars
       :unroll-ops unroll-ops
       :elem-map elem-map})))
 
+(defn set-element?
+  [id]
+  (let [set-elems (:set-elems @app-db)]
+    (some #(= % id) set-elems)))
+
 (defn involves?
   [ir ids]
   (seq (s/select [(s/walker (fn [w] (some #(= % w) ids)))] ir)))
 
+(defn carrier?
+  [id]
+  (let [sets (:sets @app-db)]
+    (some #(= % id) sets)))
+
 (defn type?
   [expr]
   (match expr
-    (_ :guard keyword?) true
+    (_ :guard carrier?) true
     {:tag :power-set :set (_ :guard type?)} true
     {:tag :power1-set :set (_ :guard type?)} true
     {:tag :fin-set :set (_ :guard type?)} true
@@ -78,7 +92,11 @@
 
 (defn boolname
   [var-id el-id]
-  (keyword (str (name var-id) (name el-id))))
+  (if (and (keyword? var-id) (keyword? el-id))
+    (keyword (str (name var-id) (name el-id)))
+    (throw (ex-info "One of the ID's given to boolname was not a keyword.
+Take care, that all patterns are handled in set->bitvector" {:var-id var-id
+                                                             :el-id el-id}))))
 
 (defn get-elems-by-id
   [id]
@@ -109,7 +127,8 @@
        {:tag :difference :sets ([A B] :seq)} (map (fn [a b] (AND a (NOT b))) (T A) (T B))
        {:tag :general-union :set-of-sets ss} (apply map OR (map T ss))
        {:tag :general-intersection :set-of-sets ss} (apply map AND (map T ss))
-       {:tag :card} '()
+       {:tag :card :set s} {:tag :plus :numbers (map (fn [p] (IF (=TRUE (BOOL p)) 1 0)) (T s))} ;; Exception to the rule. We need to return a formula giving a single number.
+       (n :guard number?) n
        (variable :guard variable?) (->> elems (map (partial boolname variable)) (map =TRUE))
        _ e))
    Set))
@@ -134,11 +153,14 @@
        {:tag :not :predicate p} (map NOT (T p))
        {:tag :equivalence :predicates ([A B] :seq)} (list (<=> (apply AND (T A)) (apply AND (T B))))
        {:tag :implication :predicates ([A B] :seq)} (list (=> (apply AND (T A)) (apply AND (T B))))
-       {:tag :member :element (v :guard variable?) :set _} (list (BOOLDEFS (unroll-variable v)))
-       ;; TODO member clauses
-       {:tag :less-eq} (list e)
+       {:tag :member :element (_ :guard set-element?) :set (_ :guard type?)} '()
+       {:tag :member :element (el-id :guard set-element?) :set (v :guard unrollable-var?)} (list (=TRUE (apply BOOL (set->bitvector (list el-id) v))))
+       {:tag :member :element (v :guard unrollable-var?) :set (_ :guard type?)} (list (BOOLDEFS (unroll-variable v)))
+       {:tag :less-eq :numbers ns} (list {:tag :less-eq :numbers (map T ns)})
        (SET :guard enumerable?) (set->bitvector '(:PID1 :PID2 :PID3) SET)))
    pred))
+
+(list (apply =TRUE (set->bitvector '(:PID1) {:tag :union :sets '(:active :waiting)})))
 
 (defn unroll-init-substitution
   [elems sub]
@@ -170,12 +192,17 @@
        _ e))
    body))
 
+(defn replace-param
+  [body parameters id]
+  (s/setval [(s/walker (fn [w] (some #(= % w) parameters)))] id body))
+
 (defn new-op
   [old-op elems elem-id]
-  {:name (boolname (:name old-op) elem-id)
+  {:tag :operation
+   :name (boolname (:name old-op) elem-id)
    :return []
    :parameters []
-   :body (unroll-op-substitution elems elem-id (:body old-op))}) ;; TODO replace param with elem-id
+   :body (unroll-op-substitution elems elem-id (replace-param (:body old-op) (:parameters old-op) elem-id))}) ;; TODO replace param with elem-id
 
 (defn unroll-operation
   [op]

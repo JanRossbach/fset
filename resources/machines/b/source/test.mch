@@ -17,8 +17,8 @@ INITIALISATION
 
 OPERATIONS
 
-rr <-- nr_ready = rr:= card(ready);
-
+rr <-- nr_true = rr:=%x.(x:{bool(active={})}|IF x=TRUE THEN 1 ELSE 0 END);
+rr <-- nr_ready = rr:= IF (PID1:active) THEN 1 ELSE 0 END + IF PID2:active THEN 1 ELSE 0 END + IF PID3:active THEN 1 ELSE 0 END;
 new(pp) =
     SELECT
         pp : PID  &

@@ -1,6 +1,6 @@
 (ns fset.dsl
   (:require
-   [lisb.translation.lisb2ir :refer [b= bpred->bool band bor bnot b<=> b=> bsubset? bmember?]]))
+   [lisb.translation.lisb2ir :refer [b= bpred->bool band bor bnot b<=> b=> bsubset? bmember? bif-expr]]))
 
 (def TRUE
   (b= :TRUE :TRUE))
@@ -47,3 +47,6 @@
 
 (defn BOOLDEFS [els]
   (apply AND (map BOOLDEF els)))
+
+(defn IF [pred then else]
+  (bif-expr pred then else))

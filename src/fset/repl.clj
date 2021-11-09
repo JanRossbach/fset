@@ -110,4 +110,11 @@
 
 (fset/unroll-init-substitution (lisb->ir '(assign :active #{:PID1 :PID2} :waiting #{:PID3 :PID1})))
 
-(fset/boolencode scheduler-ir)
+(pprint (fset/boolencode scheduler-ir))
+
+(pprint scheduler-ir)
+
+(ir->b (fset/boolencode scheduler-ir))
+
+
+(spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (fset/boolencode scheduler-ir)))
