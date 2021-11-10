@@ -56,7 +56,8 @@
   [ir]
   (let [op (first (util/get-operations ir))
         {:keys [return parameters body name]} op
-        pred (first (:clauses body))]
+        pred (first (
+:clauses body))]
     pred))
 
 (unroll-op items-ir)
@@ -68,6 +69,8 @@
 (def scheduler-ir (b->ir (slurp "resources/machines/b/source/scheduler.mch")))
 
 (def scheduler-ss (b/get-statespace scheduler-ir))
+
+(b/get-possible-var-states scheduler-ss [:ready] [:active :waiting] (util/get-invariant-as-pred scheduler-ir))
 
 (pprint scheduler-ir)
 

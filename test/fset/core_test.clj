@@ -1,8 +1,9 @@
 (ns fset.core-test
   (:require
    [clojure.test :refer [deftest testing is]]
+   [clojure.pprint :refer [pprint]]
    [lisb.translation.util :refer [ir->b b->ir]]
-   [fset.core :refer [boolencode set->bitvector init-db]]))
+   [fset.core :refer [boolencode unroll-predicate set->bitvector]]))
 
 
 (def empty-ir {:tag :machine, :clauses '(), :name :Empty})
@@ -21,13 +22,7 @@
   (testing "After the transformation the IR can be translated into a B machine."
     (is (string? (ir->b (boolencode scheduler-ir))))))
 
-(clojure.pprint/pprint (boolencode scheduler-ir))
-
-;; (ir->b (boolencode scheduler-ir))
-
-
 (def elems '(:PID1 :PID2 :PID3))
-
 (def empty-set '({:tag :equal, :left :TRUE, :right :FALSE} {:tag :equal, :left :TRUE, :right :FALSE} {:tag :equal, :left :TRUE, :right :FALSE}))
 (def active '({:tag :equal, :left :activePID1, :right :TRUE} {:tag :equal, :left :activePID2, :right :TRUE} {:tag :equal, :left :activePID3, :right :TRUE}))
 (def singleton '({:tag :equal, :left :TRUE, :right :FALSE} {:tag :equal, :left :TRUE, :right :TRUE} {:tag :equal, :left :TRUE, :right :FALSE}))
@@ -42,3 +37,11 @@
   (is (= union (set->bitvector elems {:tag :union :sets '(:active :waiting)})))
   (is (= intersection (set->bitvector elems {:tag :intersection :sets '(:active :waiting)})))
   (is (= difference (set->bitvector elems {:tag :difference :sets '(:active :waiting)}))))
+
+(ir->b (unroll-predicate {:tag :not-equal, :left :active, :right #{}}))
+
+
+(def not-equal-empty {:tag :not-equal :left :active :right #{}})
+
+(deftest logical-operators-test
+  (is (= {:tag :and } (unroll-predicate not-equal-empty))))

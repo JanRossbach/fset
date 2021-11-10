@@ -1,5 +1,6 @@
 (ns fset.backend
   (:require
+   [fset.util :as u]
    [lisb.core :refer [eval-ir-formula]]
    [lisb.prob.animator :refer [state-space!]]
    [lisb.translation.util :refer [lisb->ir ir->ast]]
@@ -56,3 +57,24 @@
   (into #{}
         (for [r api-result]
           (into #{} (map (fn [s] (keyword (str (name var) s)))  r)))))
+
+(defn init-db
+  [ir db-atom]
+  (let [ss (get-statespace ir)
+        vars (u/get-vars ir)
+        unroll-vars vars
+        unroll-ops '(:new :del :ready)
+        sets '(:PID)
+        set-elems '(:PID1 :PID2 :PID3)
+        elem-map {:active '(:PID1 :PID2 :PID3)
+                  :ready '(:PID1 :PID2 :PID3)
+                  :waiting '(:PID1 :PID2 :PID3)}]
+    (reset!
+     db-atom
+     {:ss ss
+      :sets sets
+      :set-elems set-elems
+      :vars vars
+      :unroll-vars unroll-vars
+      :unroll-ops unroll-ops
+      :elem-map elem-map})))
