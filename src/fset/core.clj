@@ -1,15 +1,10 @@
 (ns fset.core
   (:require
-   [potemkin :refer [import-vars]]
    [clojure.core.match :refer [match]]
    [fset.dsl :refer [AND OR =TRUE =FALSE <=> NOT IN TRUE FALSE EQUAL => BOOL BOOLDEFS IF]]
    [fset.util :as u]
-   [clojure.spec.alpha :as spec]
-   [fset.specs :refer :all]
    [com.rpl.specter :as s]
    [fset.backend :as b]))
-
-(import-vars [])
 
 ;; Only used to store some global information to avoid calling the backend multiple times or passing around the values in every function.
 ;; The value is not to be altered after initialization.
@@ -39,10 +34,6 @@
     {:tag :fin1-set :set (_ :guard type?)} true
     _ false))
 
-(defn unrollable-pred?
-  [_]
-  true)
-
 (defn unrollable-op?
   [op]
   (some #(= % (:name op)) (:unroll-ops @app-db)))
@@ -51,23 +42,14 @@
   [_]
   true)
 
-(defn enum-set?
-  [s]
-  true)
-
 (defn variable?
   [id]
-  true)
+  (let [vars (:vars @app-db)]
+    (some #(= % id) vars)))
 
 (defn enumerable?
   [s]
   true)
-
-(defn typedef? [expr]
-  (match expr
-    {:tag :member :element (_ :guard keyword?) :set (_ :guard type?)} true
-    {:tag :subset :subset (_ :guard keyword?) :set (_ :guard type?)} true
-    _ false))
 
 (defn boolname
   [var-id el-id]
@@ -138,15 +120,16 @@ Take care, that all patterns are handled in set->bitvector" {:var-id var-id
        (SET :guard enumerable?) (set->bitvector '(:PID1 :PID2 :PID3) SET)))
    pred))
 
-(list (apply =TRUE (set->bitvector '(:PID1) {:tag :union :sets '(:active :waiting)})))
-
 (defn unroll-init-substitution
   [elems sub]
   ((fn T [e]
      (match e
        {:tag :skip} {:tag :skip}
        {:tag :parallel-substitution :substitutions substitutions} {:tag :parallel-substitution :substitutions (map T substitutions)}
-       {:tag :assign :identifiers identifiers :values values} {:tag :assign :identifiers (mapcat unroll-variable identifiers) :values (map BOOL (mapcat (partial set->bitvector elems) values))}
+       {:tag :assign :identifiers (identifiers :guard #(every? variable? %)) :values values} {:tag :assign
+                                                                                              :identifiers (mapcat unroll-variable identifiers)
+                                                                                              :values (map BOOL (mapcat (partial set->bitvector elems) values))}
+       {:tag :assign :identifiers identifiers :values values} {:tag :assign :identifiers identifiers :values (map (partial set->bitvector elems) values)}
        {:tag :if-sub :condition condition :then then :else else} {:tag :if-sub :condition (apply AND (unroll-predicate condition)) :then (T then) :else (T else)}
        {:tag :select :clauses ([A B & _] :seq)} {:tag :select :clauses (list (apply AND (unroll-predicate A)) (T B))}
        _ e))
@@ -168,10 +151,13 @@ Take care, that all patterns are handled in set->bitvector" {:var-id var-id
      (match e
        {:tag :skip} {:tag :skip}
        {:tag :parallel-substitution :substitutions substitutions} {:tag :parallel-substitution :substitutions (map T substitutions)}
-       {:tag :assign :identifiers identifiers :values values} {:tag :assign :identifiers (map (fn [var-id] (boolname var-id elem-id)) identifiers) :values (map BOOL (mapcat (partial set->bitvector (list elem-id)) values))}
+       {:tag :assign :identifiers (identifiers :guard #(every? variable? %)) :values values} {:tag :assign
+                                                                                  :identifiers (map (fn [var-id] (boolname var-id elem-id)) identifiers)
+                                                                                  :values (map BOOL (mapcat (partial set->bitvector (list elem-id)) values))}
+       {:tag :assign :identifiers identifiers :values values} {:tag :assign :identifiers identifiers :values (map (partial set->bitvector elems) values)}
        {:tag :select :clauses ([A B & _] :seq)} {:tag :select :clauses (list (apply AND (unroll-predicate A)) (T B))}
        {:tag :if-sub :condition condition :then then :else else} {:tag :if-sub :condition (apply AND (unroll-predicate condition)) :then (T then) :else (T else)}
-       {:tag :any :identifiers identifiers :where where :then then} {:tag :select :clauses (list (apply AND (unroll-predicate (replace-param where identifiers elem-id))) (T (replace-param then identifiers elem-id)))}
+       {:tag :any :identifiers identifiers :where _ :then then} (T (replace-param then identifiers elem-id))
        _ e))
    body))
 
@@ -199,9 +185,37 @@ Take care, that all patterns are handled in set->bitvector" {:var-id var-id
          {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation v)}
          _ c))
 
+(defn simplify-formula
+  [formula]
+  (match formula
+    {:tag :not :predicate {:tag :not :predicate p}} p
+    {:tag :pred->bool :predicate {:tag :equal :left :TRUE :right :FALSE}} :FALSE
+    {:tag :pred->bool :predicate {:tag :equal :left :TRUE :right :TRUE}} :TRUE
+    {:tag :not :predicate {:tag :equal :left :TRUE :right :TRUE}} FALSE
+    {:tag :not :predicate {:tag :equal :left :TRUE :right :FALSE}} TRUE
+    {:tag :and :predicates (_ :guard (fn [ps] (some #(= % FALSE) ps)))} FALSE
+    {:tag :or :predicates (_ :guard (fn [ps] (some #(= % TRUE) ps)))} TRUE
+    {:tag :equal :left {:tag :pred->bool :predicate p} :right :TRUE} p
+    _ nil))
+
+(defn simplify-ir
+  [ir]
+  (s/transform [(s/walker simplify-formula)] simplify-formula ir))
+
+(defn simplify-all
+  [ir]
+  (loop [IR ir]
+    (let [next-ir (simplify-ir IR)]
+      (if (= IR next-ir)
+        next-ir
+        (recur next-ir)))))
+
+(defn init-db [ir]
+  (reset! app-db (b/create-app-db ir)))
+
 (defn boolencode
   [ir]
-  (b/init-db ir app-db)
-  {:tag :machine
-   :name (:name ir)
-   :clauses (map unroll-clause (:clauses ir))})
+  (init-db ir)
+  (simplify-all {:tag :machine
+                 :name (:name ir)
+                 :clauses (map unroll-clause (:clauses ir))}))

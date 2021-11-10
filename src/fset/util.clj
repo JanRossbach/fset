@@ -14,9 +14,6 @@
 (def PAR-ASSIGNS (s/path [INIT :substitution :substitutions s/ALL]))
 (def PROPERTIES (s/path [(CLAUSE :properties)]))
 (def TYPEDEFS (s/path [INVAR :predicate (s/if-path (s/must :predicates) [:predicates] s/STAY)]))
-(def NEW-VARS (s/path [:variables s/ALL :elems s/ALL]))
-(def OLD-VARS (s/path [:variables s/ALL :id]))
-(def STATESPACE (s/path [:statespace]))
 (def OPERATIONS (s/path [(CLAUSE :operations)]))
 (def TARGET-SETS (s/path [:target-sets s/ALL]))
 
@@ -30,27 +27,11 @@
                                                                       :ir ir}))
       (= (:tag (first sets)) :deferred-set))))
 
-(defn is-enumerated?
-  [ir ts]
-  (not (is-deferred? ir ts)))
-
 ;; GETTERS
-
-(defn get-new-var-ids
-  [u]
-  (s/select [NEW-VARS] u))
-
-(defn get-old-var-ids
-  [u]
-  (s/select [OLD-VARS] u))
 
 (defn get-init
   [u]
   (first (s/select [INIT] u)))
-
-(defn get-statespace
-  [u]
-  (first (s/select [STATESPACE] u)))
 
 (defn get-vars
   [u]
@@ -174,17 +155,6 @@
   [u init]
   (s/setval [INIT] init u))
 
-;; REMOVING
-
-(defn rm-var-by-id
-  [u id]
-  (if (= 1 (count (get-vars u)))
-    (s/setval [(CLAUSE :variables)] s/NONE u)
-    (s/setval [VARIABLES s/ALL #(= id %)] s/NONE u)))
-
-(defn rm-vars
-  [u ids]
-  (reduce rm-var-by-id u ids))
 
 (defn- make-assign-ir
   [[s t]]
@@ -250,10 +220,6 @@
   [u id]
   (s/transform [(s/walker #(= (:tag %) :call)) #(= (:f %) id)] #(first (:args %)) u))
 
-(defn clear-empty-sets
-  [u]
-  (s/setval [INVAR :values s/ALL #(= % {})] s/NONE u))
-
 (defn get-constants
   [u]
   (s/select [(CLAUSE :constants) :values s/ALL] u))
@@ -270,17 +236,3 @@
         prop-preds (:values (get-properties u))]
     {:tag :and
      :predicates (concat invar-preds prop-preds)}))
-
-;; FIXME
-(defn add-bool-vars
-  [u bools]
-  u)
-
-;; FIXME
-(defn add-operations
-  [u]
-  u)
-
-(defn involves?
-  [id ir]
-  (seq (s/select (s/walker #(= % id))  ir)))

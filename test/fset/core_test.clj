@@ -3,7 +3,7 @@
    [clojure.test :refer [deftest testing is]]
    [clojure.pprint :refer [pprint]]
    [lisb.translation.util :refer [ir->b b->ir]]
-   [fset.core :refer [boolencode unroll-predicate set->bitvector]]))
+   [fset.core :refer [boolencode unroll-predicate set->bitvector init-db]]))
 
 
 (def empty-ir {:tag :machine, :clauses '(), :name :Empty})
@@ -13,6 +13,7 @@
     (is (= empty-ir (boolencode empty-ir)))))
 
 (def scheduler-ir (b->ir (slurp "resources/test/scheduler.mch")))
+(init-db scheduler-ir)
 
 (deftest scheduler-machine-test
   (testing "The scheduler machine should be changed in some way"
@@ -37,11 +38,3 @@
   (is (= union (set->bitvector elems {:tag :union :sets '(:active :waiting)})))
   (is (= intersection (set->bitvector elems {:tag :intersection :sets '(:active :waiting)})))
   (is (= difference (set->bitvector elems {:tag :difference :sets '(:active :waiting)}))))
-
-(ir->b (unroll-predicate {:tag :not-equal, :left :active, :right #{}}))
-
-
-(def not-equal-empty {:tag :not-equal :left :active :right #{}})
-
-(deftest logical-operators-test
-  (is (= {:tag :and } (unroll-predicate not-equal-empty))))
