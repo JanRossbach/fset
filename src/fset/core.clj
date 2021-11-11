@@ -1,7 +1,7 @@
 (ns fset.core
   (:require
    [clojure.core.match :refer [match]]
-   [fset.dsl :refer [AND OR =TRUE =FALSE <=> NOT IN TRUE FALSE EQUAL => BOOL BOOLDEFS IF]]
+   [fset.dsl :refer [AND OR =TRUE =FALSE <=> NOT IN TRUE FALSE EQUAL => BOOL BOOLDEFS IF ASSIGN]]
    [fset.util :as u]
    [com.rpl.specter :as s]
    [fset.backend :as b]))
@@ -9,6 +9,7 @@
 ;; Only used to store some global information to avoid calling the backend multiple times or passing around the values in every function.
 ;; The value is not to be altered after initialization.
 (def app-db (atom {}))
+(def m 5)
 
 (defn set-element?
   [id]
@@ -39,8 +40,9 @@
   (some #(= % (:name op)) (:unroll-ops @app-db)))
 
 (defn unrollable-var?
-  [_]
-  true)
+  [id]
+  (let [db @app-db]
+    (some #(= % id) (:unroll-vars db))))
 
 (defn variable?
   [id]
@@ -74,23 +76,33 @@ Take care, that all patterns are handled in set->bitvector" {:var-id var-id
     (map (partial boolname var-id) (get-elems-by-id var-id))
     (list var-id)))
 
+(defn get-all-elems-from-elem
+  [_]
+  (let [db @app-db]
+    (:set-elems db)))
+
 (defn set->bitvector
-  [elems Set]
+  [Set]
   ((fn T [e]
      (match e
-       #{} (repeat (count elems) FALSE)
-       (singleton-set :guard #(and (set? %) (= 1 (count %)))) (let [x (first singleton-set)] (map (fn [e] (if (= e x) TRUE FALSE)) elems))
+       #{} (repeat m FALSE)
+       (singleton-set :guard #(and (set? %) (= 1 (count %)))) (let [x (first singleton-set)] (map (fn [e] (if (= e x) TRUE FALSE)) (get-all-elems-from-elem x)))
        {:tag :union :sets ([A B] :seq)} (map (fn [a b] (OR a b)) (T A) (T B))
        {:tag :intersection :sets ([A B] :seq)} (map (fn [a b] (AND a b)) (T A) (T B))
        {:tag :difference :sets ([A B] :seq)} (map (fn [a b] (AND a (NOT b))) (T A) (T B))
        {:tag :general-union :set-of-sets ss} (apply map OR (map T ss))
        {:tag :general-intersection :set-of-sets ss} (apply map AND (map T ss))
-       {:tag :card :set s} {:tag :plus :numbers (map (fn [p] (IF (=TRUE (BOOL p)) 1 0)) (T s))}
+       {:tag :card :set s} (list {:tag :plus :numbers (map (fn [p] (IF (=TRUE (BOOL p)) 1 0)) (T s))})
        {:tag :minus :numbers ns} (T {:tag :difference :sets ns})
-       (n :guard number?) n
-       (variable :guard variable?) (->> elems (map (partial boolname variable)) (map =TRUE))
+       (n :guard number?) (list n)
+       (variable :guard variable?) (map =TRUE (unroll-variable variable))
        _ e))
    Set))
+
+
+(defn pick-bool-var
+  [formulas el-id]
+  (filter (fn [formula] (involves? formula (get (:elboolvars @app-db) el-id))) formulas))
 
 (defn unroll-predicate
   "Takes a B predicate of type POW(S), that is not a type definition, and a collection of elements, and returns
@@ -114,52 +126,27 @@ Take care, that all patterns are handled in set->bitvector" {:var-id var-id
        {:tag :equivalence :predicates ([A B] :seq)} (list (<=> (apply AND (T A)) (apply AND (T B))))
        {:tag :implication :predicates ([A B] :seq)} (list (=> (apply AND (T A)) (apply AND (T B))))
        {:tag :member :element (_ :guard set-element?) :set (_ :guard type?)} '()
-       {:tag :member :element (el-id :guard set-element?) :set (v :guard unrollable-var?)} (list (=TRUE (apply BOOL (set->bitvector (list el-id) v))))
+       {:tag :member :element (el-id :guard set-element?) :set (v :guard unrollable-var?)} (pick-bool-var (set->bitvector v) el-id)
        {:tag :member :element (v :guard unrollable-var?) :set (_ :guard type?)} (list (BOOLDEFS (unroll-variable v)))
-       {:tag :less-eq :numbers ns} (list {:tag :less-eq :numbers (map T ns)})
-       (SET :guard enumerable?) (set->bitvector '(:PID1 :PID2 :PID3) SET)))
+       {:tag :less-eq :numbers ns} (list {:tag :less-eq :numbers (mapcat T ns)})
+       (SET :guard enumerable?) (set->bitvector SET)
+       _ e))
    pred))
 
-(defn unroll-init-substitution
-  [elems sub]
+(defn unroll-sub
+  [sub]
   ((fn T [e]
      (match e
-       {:tag :skip} {:tag :skip}
+       {:tag :skip} (list {:tag :skip})
        {:tag :parallel-substitution :substitutions substitutions} {:tag :parallel-substitution :substitutions (map T substitutions)}
-       {:tag :assign :identifiers (identifiers :guard #(every? variable? %)) :values values} {:tag :assign
-                                                                                              :identifiers (mapcat unroll-variable identifiers)
-                                                                                              :values (map BOOL (mapcat (partial set->bitvector elems) values))}
-       {:tag :assign :identifiers identifiers :values values} {:tag :assign :identifiers identifiers :values (map (partial set->bitvector elems) values)}
+       {:tag :assign :identifiers identifiers :values values} {:tag :parallel-substitution :substitutions (map (fn [v p] (ASSIGN v (BOOL p))) (mapcat unroll-variable identifiers) (mapcat set->bitvector values))}
        {:tag :if-sub :condition condition :then then :else else} {:tag :if-sub :condition (apply AND (unroll-predicate condition)) :then (T then) :else (T else)}
        {:tag :select :clauses ([A B & _] :seq)} {:tag :select :clauses (list (apply AND (unroll-predicate A)) (T B))}
+       {:tag :any :identifiers identifiers :where _ :then then} (T then)
        _ e))
    sub))
 
-(defn unroll-init
-  [& values]
-  (let [vars (:unroll-vars @app-db)]
-    (map (fn [v]
-           (if (involves? v vars)
-             (unroll-init-substitution '(:PID1 :PID2 :PID3) v)
-             v))
-         values)))
-
-
-(defn unroll-op-substitution
-  [elems elem-id body]
-  ((fn T [e]
-     (match e
-       {:tag :skip} {:tag :skip}
-       {:tag :parallel-substitution :substitutions substitutions} {:tag :parallel-substitution :substitutions (map T substitutions)}
-       {:tag :assign :identifiers (identifiers :guard #(every? variable? %)) :values values} {:tag :assign
-                                                                                  :identifiers (map (fn [var-id] (boolname var-id elem-id)) identifiers)
-                                                                                  :values (map BOOL (mapcat (partial set->bitvector (list elem-id)) values))}
-       {:tag :assign :identifiers identifiers :values values} {:tag :assign :identifiers identifiers :values (map (partial set->bitvector elems) values)}
-       {:tag :select :clauses ([A B & _] :seq)} {:tag :select :clauses (list (apply AND (unroll-predicate A)) (T B))}
-       {:tag :if-sub :condition condition :then then :else else} {:tag :if-sub :condition (apply AND (unroll-predicate condition)) :then (T then) :else (T else)}
-       {:tag :any :identifiers identifiers :where _ :then then} (T (replace-param then identifiers elem-id))
-       _ e))
-   body))
+(mapcat unroll-variable '(:rr))
 
 (defn new-op
   [old-op elems elem-id]
@@ -167,21 +154,21 @@ Take care, that all patterns are handled in set->bitvector" {:var-id var-id
    :name (boolname (:name old-op) elem-id)
    :return []
    :parameters []
-   :body (unroll-op-substitution elems elem-id (replace-param (:body old-op) (:parameters old-op) elem-id))})
+   :body (unroll-sub (replace-param (:body old-op) (:parameters old-op) elem-id))})
 
 (defn unroll-operation
   [op]
   (let [elems '(:PID1 :PID2 :PID3)]
     (if (unrollable-op? op)
       (map (partial new-op op elems) elems)
-      (list (assoc op :body (unroll-init-substitution elems (:body op)))))))
+      (list (assoc op :body (unroll-sub (:body op)))))))
 
 (defn unroll-clause
   [c]
   (match c
          {:tag :variables :values v} {:tag :variables :values (mapcat unroll-variable v)}
          {:tag :invariants :values v} {:tag :invariants :values (mapcat unroll-predicate v)}
-         {:tag :init :values v} {:tag :init :values (mapcat unroll-init v)}
+         {:tag :init :values v} {:tag :init :values (map unroll-sub v)}
          {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation v)}
          _ c))
 
@@ -194,8 +181,13 @@ Take care, that all patterns are handled in set->bitvector" {:var-id var-id
     {:tag :not :predicate {:tag :equal :left :TRUE :right :TRUE}} FALSE
     {:tag :not :predicate {:tag :equal :left :TRUE :right :FALSE}} TRUE
     {:tag :and :predicates (_ :guard (fn [ps] (some #(= % FALSE) ps)))} FALSE
-    {:tag :or :predicates (_ :guard (fn [ps] (some #(= % TRUE) ps)))} TRUE
+    {:tag :and :predicates ps} {:tag :and :predicates (filter #(not= % TRUE) ps)}
+    {:tag :or :predicates (_ :guard (fn [ps] (some #(not= % TRUE) ps)))} TRUE
+    {:tag :or :predicates ps} {:tag :or :predicates (filter #(= % FALSE) ps)}
     {:tag :equal :left {:tag :pred->bool :predicate p} :right :TRUE} p
+    {:tag :assign :identifiers ([a] :seq) :values ({:tag :pred->bool :predicate {:tag :equal :left b :right :TRUE}} :seq)} (if (= a b) s/NONE formula)
+    {:tag :pred->bool :predicate {:tag :plus :numbers n}} {:tag :plus :numbers n}
+    {:tag :parallel-substitution :substitutions (subl :guard #(= (count %) 1))} (first subl)
     _ nil))
 
 (defn simplify-ir

@@ -73,6 +73,9 @@
     {:ss ss
      :sets sets
      :set-elems set-elems
+     :elboolvars {:PID1 '(:activePID1 :readyPID1 :waitingPID1)
+                  :PID2 '(:activePID2 :readyPID2 :waitingPID2)
+                  :PID3 '(:activePID3 :readyPID3 :waitingPID3)}
      :vars vars
      :unroll-vars unroll-vars
      :unroll-ops unroll-ops

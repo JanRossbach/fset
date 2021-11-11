@@ -3,12 +3,12 @@
    [fset.util :as util]
    [clojure.core.match :refer [match]]
    [fset.core :as fset]
+   [fset.extract :as e]
    [fset.dsl :refer [AND]]
    [fset.backend :as b]
    [lisb.prob.animator :refer [state-space!]]
    [clojure.pprint :refer [pprint]]
-   [lisb.translation.util :refer :all]
-   [fset.extract :as ex]))
+   [lisb.translation.util :refer :all]))
 
 ;; Namespace to run the core functions in a repl and experiment with results.
 
@@ -38,3 +38,10 @@
 (pprint (fset/boolencode scheduler-ir))
 
 (spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (fset/boolencode scheduler-ir)))
+
+(def extract-ir (b->ir (slurp "resources/machines/b/source/func_extract.mch")))
+
+(pprint (e/extract extract-ir :p))
+
+
+(pprint extract-ir)

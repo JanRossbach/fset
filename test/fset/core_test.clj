@@ -22,19 +22,3 @@
 (deftest valid-B-machine-test
   (testing "After the transformation the IR can be translated into a B machine."
     (is (string? (ir->b (boolencode scheduler-ir))))))
-
-(def elems '(:PID1 :PID2 :PID3))
-(def empty-set '({:tag :equal, :left :TRUE, :right :FALSE} {:tag :equal, :left :TRUE, :right :FALSE} {:tag :equal, :left :TRUE, :right :FALSE}))
-(def active '({:tag :equal, :left :activePID1, :right :TRUE} {:tag :equal, :left :activePID2, :right :TRUE} {:tag :equal, :left :activePID3, :right :TRUE}))
-(def singleton '({:tag :equal, :left :TRUE, :right :FALSE} {:tag :equal, :left :TRUE, :right :TRUE} {:tag :equal, :left :TRUE, :right :FALSE}))
-(def union '({:tag :or, :predicates ({:tag :equal, :left :activePID1, :right :TRUE} {:tag :equal, :left :waitingPID1, :right :TRUE})} {:tag :or, :predicates ({:tag :equal, :left :activePID2, :right :TRUE} {:tag :equal, :left :waitingPID2, :right :TRUE})} {:tag :or, :predicates ({:tag :equal, :left :activePID3, :right :TRUE} {:tag :equal, :left :waitingPID3, :right :TRUE})}))
-(def intersection '({:tag :and, :predicates ({:tag :equal, :left :activePID1, :right :TRUE} {:tag :equal, :left :waitingPID1, :right :TRUE})} {:tag :and, :predicates ({:tag :equal, :left :activePID2, :right :TRUE} {:tag :equal, :left :waitingPID2, :right :TRUE})} {:tag :and, :predicates ({:tag :equal, :left :activePID3, :right :TRUE} {:tag :equal, :left :waitingPID3, :right :TRUE})}))
-(def difference '({:tag :and, :predicates ({:tag :equal, :left :activePID1, :right :TRUE} {:tag :not, :predicate {:tag :equal, :left :waitingPID1, :right :TRUE}})} {:tag :and, :predicates ({:tag :equal, :left :activePID2, :right :TRUE} {:tag :not, :predicate {:tag :equal, :left :waitingPID2, :right :TRUE}})} {:tag :and, :predicates ({:tag :equal, :left :activePID3, :right :TRUE} {:tag :not, :predicate {:tag :equal, :left :waitingPID3, :right :TRUE}})}))
-
-(deftest bitvector-translation-test
-  (is (= active (set->bitvector elems :active)))
-  (is (= empty-set (set->bitvector elems #{})))
-  (is (= singleton (set->bitvector elems #{:PID2})))
-  (is (= union (set->bitvector elems {:tag :union :sets '(:active :waiting)})))
-  (is (= intersection (set->bitvector elems {:tag :intersection :sets '(:active :waiting)})))
-  (is (= difference (set->bitvector elems {:tag :difference :sets '(:active :waiting)}))))

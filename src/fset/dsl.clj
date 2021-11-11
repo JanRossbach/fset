@@ -1,6 +1,6 @@
 (ns fset.dsl
   (:require
-   [lisb.translation.lisb2ir :refer [b= bpred->bool band bor bnot b<=> b=> bsubset? bmember? bif-expr]]))
+   [lisb.translation.lisb2ir :refer [b= bpred->bool band bor bnot b<=> b=> bsubset? bmember? bif-expr bassign]]))
 
 (def TRUE
   (b= :TRUE :TRUE))
@@ -50,3 +50,6 @@
 
 (defn IF [pred then else]
   (bif-expr pred then else))
+
+(defn ASSIGN [id val]
+  (bassign id val))
