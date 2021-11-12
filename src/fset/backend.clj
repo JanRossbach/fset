@@ -1,6 +1,8 @@
 (ns fset.backend
   (:require
+   [com.rpl.specter :as s]
    [fset.util :as u]
+   [clojure.core.match :refer [match]]
    [lisb.core :refer [eval-ir-formula]]
    [lisb.prob.animator :refer [state-space!]]
    [lisb.translation.util :refer [lisb->ir ir->ast]]
@@ -58,11 +60,11 @@
         (for [r api-result]
           (into #{} (map (fn [s] (keyword (str (name var) s)))  r)))))
 
-
+;; Mocked
 (defn create-app-db
-  [ir]
-  (let [ss (get-statespace ir)
-        vars (u/get-vars ir)
+  [_]
+  (let [ss {}
+        vars '(:active :ready :waiting)
         unroll-vars vars
         unroll-ops '(:new :del :ready :swap)
         sets '(:PID)
@@ -80,3 +82,82 @@
      :unroll-vars unroll-vars
      :unroll-ops unroll-ops
      :elem-map elem-map}))
+
+(def app-db (atom (create-app-db {})))
+
+(defn set-element?
+  [id]
+  (let [set-elems (:set-elems @app-db)]
+    (some #(= % id) set-elems)))
+
+(defn involves?
+  [ir ids]
+  (seq (s/select [(s/walker (fn [w] (some #(= % w) ids)))] ir)))
+
+(defn carrier?
+  [id]
+  (let [sets (:sets @app-db)]
+    (some #(= % id) sets)))
+
+(defn type?
+  [expr]
+  (match expr
+    (_ :guard carrier?) true
+    {:tag :power-set :set (_ :guard type?)} true
+    {:tag :power1-set :set (_ :guard type?)} true
+    {:tag :fin-set :set (_ :guard type?)} true
+    {:tag :fin1-set :set (_ :guard type?)} true
+    _ false))
+
+(defn unrollable-op?
+  [op]
+  (some #(= % (:name op)) (:unroll-ops @app-db)))
+
+(defn unrollable-var?
+  [id]
+  (let [db @app-db]
+    (some #(= % id) (:unroll-vars db))))
+
+(defn variable?
+  [id]
+  (let [vars (:vars @app-db)]
+    (some #(= % id) vars)))
+
+(defn enumerable?
+  [s]
+  true)
+
+(defn boolname
+  [var-id el-id]
+  (if (and (keyword? var-id) (keyword? el-id))
+    (keyword (str (name var-id) (name el-id)))
+    (throw (ex-info "One of the ID's given to boolname was not a keyword.
+Take care, that all patterns are handled in set->bitvector" {:var-id var-id
+                                                             :el-id el-id}))))
+(defn replace-param
+  [body parameters id]
+  (s/setval [(s/walker (fn [w] (some #(= % w) parameters)))] id body))
+
+(defn get-elems-by-id
+  [id]
+  (let [db @app-db
+        elem-map (:elem-map db)]
+    (get elem-map id)))
+
+(defn unroll-variable
+  [var-id]
+  (if (unrollable-var? var-id)
+    (map (partial boolname var-id) (get-elems-by-id var-id))
+    (list var-id)))
+
+(defn get-all-elems-from-elem
+  [_]
+  (let [db @app-db]
+    (:set-elems db)))
+
+(defn pick-bool-var
+  [formulas el-id]
+  (filter (fn [formula] (involves? formula (get (:elboolvars @app-db) el-id))) formulas))
+
+(defn calc-op-combinations [op]
+  '(:PID1 :PID2 :PID3))

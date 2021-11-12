@@ -40,8 +40,3 @@
 (spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (fset/boolencode scheduler-ir)))
 
 (def extract-ir (b->ir (slurp "resources/machines/b/source/func_extract.mch")))
-
-(pprint (e/extract extract-ir :p))
-
-
-(pprint extract-ir)
