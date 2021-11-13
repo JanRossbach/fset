@@ -1,5 +1,6 @@
 (ns fset.util
   (:require
+   [clojure.core.match :refer [match]]
    [com.rpl.specter :as s]))
 
 ;; Namespace to provide specter functionality to the transform ns.

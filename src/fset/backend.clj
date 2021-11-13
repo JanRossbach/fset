@@ -79,15 +79,20 @@
                   :PID2 '(:activePID2 :readyPID2 :waitingPID2)
                   :PID3 '(:activePID3 :readyPID3 :waitingPID3)}
      :vars vars
+     :op-comps {:nr-ready []
+                :new [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]]
+                :ready [[[:rr :PID1]] [[:rr :PID2]] [[:rr :PID3]]]
+                :del [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]]
+                :swap [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]]}
      :unroll-vars unroll-vars
      :unroll-ops unroll-ops
      :elem-map elem-map}))
 
-(def app-db (atom (create-app-db {})))
+(def app-cache (atom (create-app-db {})))
 
 (defn set-element?
   [id]
-  (let [set-elems (:set-elems @app-db)]
+  (let [set-elems (:set-elems @app-cache)]
     (some #(= % id) set-elems)))
 
 (defn involves?
@@ -96,7 +101,7 @@
 
 (defn carrier?
   [id]
-  (let [sets (:sets @app-db)]
+  (let [sets (:sets @app-cache)]
     (some #(= % id) sets)))
 
 (defn type?
@@ -111,53 +116,48 @@
 
 (defn unrollable-op?
   [op]
-  (some #(= % (:name op)) (:unroll-ops @app-db)))
+  (some #(= % (:name op)) (:unroll-ops @app-cache)))
 
 (defn unrollable-var?
   [id]
-  (let [db @app-db]
+  (let [db @app-cache]
     (some #(= % id) (:unroll-vars db))))
 
 (defn variable?
   [id]
-  (let [vars (:vars @app-db)]
+  (let [vars (:vars @app-cache)]
     (some #(= % id) vars)))
 
 (defn enumerable?
   [s]
   true)
 
-(defn boolname
-  [var-id el-id]
-  (if (and (keyword? var-id) (keyword? el-id))
-    (keyword (str (name var-id) (name el-id)))
-    (throw (ex-info "One of the ID's given to boolname was not a keyword.
-Take care, that all patterns are handled in set->bitvector" {:var-id var-id
-                                                             :el-id el-id}))))
-(defn replace-param
-  [body parameters id]
-  (s/setval [(s/walker (fn [w] (some #(= % w) parameters)))] id body))
+(defn create-boolname
+  [& ids]
+  (keyword (apply str (map name ids))))
 
 (defn get-elems-by-id
   [id]
-  (let [db @app-db
+  (let [db @app-cache
         elem-map (:elem-map db)]
     (get elem-map id)))
 
 (defn unroll-variable
   [var-id]
   (if (unrollable-var? var-id)
-    (map (partial boolname var-id) (get-elems-by-id var-id))
+    (map (partial create-boolname var-id) (get-elems-by-id var-id))
     (list var-id)))
 
 (defn get-all-elems-from-elem
   [_]
-  (let [db @app-db]
+  (let [db @app-cache]
     (:set-elems db)))
 
 (defn pick-bool-var
   [formulas el-id]
-  (filter (fn [formula] (involves? formula (get (:elboolvars @app-db) el-id))) formulas))
+  (filter (fn [formula] (involves? formula (get (:elboolvars @app-cache) el-id))) formulas))
 
-(defn calc-op-combinations [op]
-  '(:PID1 :PID2 :PID3))
+(defn calc-op-combinations [op-id]
+  (let [db @app-cache
+        op-combs (:op-comps db)]
+    (get op-combs op-id)))

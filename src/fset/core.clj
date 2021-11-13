@@ -2,6 +2,7 @@
   (:require
    [clojure.core.match :refer [match]]
    [fset.dsl :refer [AND OR =TRUE <=> NOT TRUE FALSE EQUAL => BOOL BOOLDEFS IF ASSIGN]]
+   [fset.util :as util]
    [com.rpl.specter :as s]
    [fset.backend :as b]))
 
@@ -73,19 +74,60 @@
        _ e))
    sub))
 
+(defn replace-param
+  [body [parameter element]]
+  (s/setval [(s/walker #(= % parameter))] element body))
+
+(defn apply-binding
+  [body binding]
+  (reduce replace-param body binding))
+
+(defn non-det-clause?
+  [pattern]
+  (match pattern
+    {:tag :any} true
+    _ false))
+
+(defn get-non-det-clauses
+  [op]
+  (s/select (s/walker non-det-clause?) op))
+
+(defn get-non-det-guards
+  [op]
+  (let [non-det-clauses (get-non-det-clauses op)]
+    (map (fn [clause]
+           (match clause
+             {:tag :any :where w} w))
+         non-det-clauses)))
+
+(defn add-guards
+  [op guards]
+  (assoc op :body {:tag :select :clauses (list (apply AND guards) (:body op))}))
+
+(defn lift-guards
+  [op]
+  (let [guards (get-non-det-guards op)]
+    (if (empty? guards)
+      op
+      (add-guards op guards))))
+
 (defn new-op
-  [old-op elems elem-id]
+  [old-op binding]
   {:tag :operation
-   :name (b/boolname (:name old-op) elem-id)
-   :return (:return old-op)
+   :name (apply b/create-boolname (:name old-op) (map second binding))
+   :return []
    :parameters []
-   :body (unroll-sub (b/replace-param (:body old-op) (:parameters old-op) elem-id))})
+   :body (-> old-op
+             lift-guards
+             :body
+             (apply-binding binding)
+             unroll-sub)})
 
 (defn unroll-operation
   [op]
-  (let [elems (b/calc-op-combinations op)]
-    (if (seq elems)
-      (map (partial new-op op elems) elems)
+  (let [bindings (b/calc-op-combinations (:name op))]
+    (if (seq bindings)
+      (map (partial new-op op) bindings)
       (list (assoc op :body (unroll-sub (:body op)))))))
 
 (defn unroll-clause
@@ -116,7 +158,9 @@
     {:tag :pred->bool :predicate {:tag :plus :numbers n}} {:tag :plus :numbers n}
     {:tag :parallel-substitution :substitutions (substitutions :guard #(= (count %) 1))} (first substitutions)
     {:tag :parallel-substitution :substitutions (_ :guard empty?)} s/NONE
+    {:tag :select :clauses ([outer-guard {:tag :select :clauses ([inner-guard & r] :seq)}] :seq)} {:tag :select :clauses (cons (AND outer-guard inner-guard) r)}
     _ nil))
+
 
 (defn simplify-ir
   [ir]
@@ -135,9 +179,3 @@
   (simplify-all {:tag :machine
                  :name (:name ir)
                  :clauses (map unroll-clause (:clauses ir))}))
-
-(defn boolencode-without-simplify
-  [ir]
-  {:tag :machine
-   :name (:name ir)
-   :clauses (map unroll-clause (:clauses ir))})
