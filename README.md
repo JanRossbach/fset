@@ -10,9 +10,8 @@ This is done to increase performance of partial order reduction optimizations in
 ```
 lein repl
 ```
-- Run the core functions in a repl
-- Examples can be found in experiment.clj
-- Configuration can be done in config.clj
+- In order to translate a B machine, load the machines IR using lisb and run the boolencode function from the core namespace
+- Examples can be found in repl.clj and in the core tests
 
 ## License
 
