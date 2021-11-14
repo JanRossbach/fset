@@ -1,25 +1,57 @@
 (ns fset.backend-test
   (:require
-   [clojure.test :refer [deftest testing is]]
+   [clojure.test :refer [deftest testing is are]]
    [lisb.translation.util :refer [b->ir]]
    [fset.backend :as b]))
 
+;; Tests on the scheduler
+
 (def scheduler-ir (b->ir (slurp "resources/test/scheduler.mch")))
+(b/setup-backend scheduler-ir)
 
-(deftest loading-statespace-test
-  (testing "The returned statespace has the correct Type."
-      (is (= de.prob.statespace.StateSpace (type (b/get-statespace scheduler-ir))))))
+(deftest carrier?-test
+  (is (b/carrier? :PID))
+  (is (not (b/carrier? :active)))
+  (is (not (b/carrier? 1))))
 
+(deftest create-boolname-test
+  (are [x y] (= x y)
+    :activePID1 (b/create-boolname :active :PID1)
+    :activePID1PID2 (b/create-boolname :active [:PID1 :PID2])))
 
-(def scheduler-ss (b/get-statespace scheduler-ir))
+(deftest set-element?-test
+  (is (b/set-element? :PID1))
+  (is (not (b/set-element? :active)))
+  (is (not (b/set-element? :PID)))
+  (is (not (b/set-element? 1))))
 
+(deftest unrollable-var?-test
+  (is (b/unrollable-var? :active))
+  (is (not (b/unrollable-var? :PID)))
+  (is (not (b/unrollable-var? :swap))))
 
-(deftest set-elems-test
-  (testing "The correct elements are returned."
-   (is (= #{"PID1" "PID2" "PID3"} (b/set-elems scheduler-ss :PID)))))
+(deftest variable?-test
+  (is (b/variable? :active))
+  (is (b/variable? :ready))
+  (is (b/variable? :waiting))
+  (is (not (b/variable? :PID)))
+  (is (not (b/variable? :PID1)))
+  (is (not (b/variable? 1)))
+  (is (not (b/variable? false))))
 
-(deftest type-test
-  (testing "Powerset Type"
-    (is (= "POW(PID)" (b/get-type scheduler-ss :active)))
-    (is (= "POW(PID)" (b/get-type scheduler-ss :ready)))
-    (is (= "POW(PID)" (b/get-type scheduler-ss :waiting)))))
+(deftest enumerable?-test
+  (is (b/enumerable? :active))
+  (is (b/enumerable? {:tag :union :sets '(:active :ready)})))
+
+(deftest unroll-variable-test)
+
+(deftest get-all-elems-from-elem-test
+  (is (= '(:PID1 :PID2 :PID3) (b/get-all-elems-from-elem :PID1)))
+  (is (= '(:PID1 :PID2 :PID3) (b/get-all-elems-from-elem :PID2)))
+  (is (= '(:PID1 :PID2 :PID3) (b/get-all-elems-from-elem :PID3))))
+
+;; TODO
+(deftest pick-bool-var-test)
+
+;; TODO
+(deftest get-op-combinations-test)

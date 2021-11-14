@@ -1,12 +1,22 @@
 (ns fset.core
   (:require
-   [clojure.core.match :refer [match]]
    [fset.dsl :refer [AND OR =TRUE <=> NOT TRUE FALSE EQUAL => BOOL BOOLDEFS IF ASSIGN]]
-   [fset.util :as util]
+   [clojure.core.match :refer [match]]
    [com.rpl.specter :as s]
    [fset.backend :as b]))
 
 (def m 5) ;; MAX-SET-SIZE
+
+
+(defn type?
+  [expr]
+  (match expr
+    (_ :guard b/carrier?) true
+    {:tag :power-set :set (_ :guard type?)} true
+    {:tag :power1-set :set (_ :guard type?)} true
+    {:tag :fin-set :set (_ :guard type?)} true
+    {:tag :fin1-set :set (_ :guard type?)} true
+    _ false))
 
 (defn set->bitvector
   [Set]
@@ -28,8 +38,6 @@
 
 
 (defn unroll-predicate
-  "Takes a B predicate of type POW(S), that is not a type definition, and a collection of elements, and returns
-  a collection of predicates that represent the unrolled expression."
   [pred]
   ((fn T [e]
      (match e
@@ -38,7 +46,7 @@
        {:tag :equal :left #{} :right r} (list (apply AND (map NOT (T r))))
        {:tag :equal :left l :right r} (list (apply AND (map <=> (T l) (T r))))
        {:tag :not-equal :left l :right r} (list (apply NOT (T (EQUAL l r))))
-       {:tag :subset :subset (s :guard b/unrollable-var?) :set (_ :guard b/type?)} (list (BOOLDEFS (b/unroll-variable s)))
+       {:tag :subset :subset (s :guard b/unrollable-var?) :set (_ :guard type?)} (list (BOOLDEFS (b/unroll-variable s)))
        {:tag :subset :subset s :set S} (map (fn [a b] (=> a b)) (T s) (T S))
        {:tag :subset-strict :subset s :set S} (let [Ts (T s) TS (T S)] (cons (apply OR (map (fn [a b] (AND a (NOT b))) Ts TS))
                                                                              (map (fn [a b] (=> a b)) Ts TS)))
@@ -50,9 +58,9 @@
        {:tag :implication :predicates ([A B] :seq)} (list (=> (apply AND (T A)) (apply AND (T B))))
 
        ;; Member
-       {:tag :member :element (_ :guard b/set-element?) :set (_ :guard b/type?)} '()
+       {:tag :member :element (_ :guard b/set-element?) :set (_ :guard type?)} '()
        {:tag :member :element (el-id :guard b/set-element?) :set v} (b/pick-bool-var (set->bitvector v) el-id)
-       {:tag :member :element (v :guard b/unrollable-var?) :set (_ :guard b/type?)} (list (BOOLDEFS (b/unroll-variable v)))
+       {:tag :member :element (v :guard b/unrollable-var?) :set (_ :guard type?)} (list (BOOLDEFS (b/unroll-variable v)))
 
        ;; Numbers
        {:tag :less-eq :numbers ns} (list {:tag :less-eq :numbers (mapcat T ns)})
@@ -125,7 +133,7 @@
 
 (defn unroll-operation
   [op]
-  (let [bindings (b/calc-op-combinations (:name op))]
+  (let [bindings (b/get-op-combinations (:name op))]
     (if (seq bindings)
       (map (partial new-op op) bindings)
       (list (assoc op :body (unroll-sub (:body op)))))))

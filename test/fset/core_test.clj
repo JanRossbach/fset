@@ -3,7 +3,7 @@
    [clojure.test :refer [deftest testing is]]
    [clojure.pprint :refer [pprint]]
    [lisb.translation.util :refer [ir->b b->ir]]
-   [fset.core :refer [boolencode unroll-predicate set->bitvector init-db]]))
+   [fset.core :refer [boolencode]]))
 
 
 (def empty-ir {:tag :machine, :clauses '(), :name :Empty})
@@ -13,12 +13,12 @@
     (is (= empty-ir (boolencode empty-ir)))))
 
 (def scheduler-ir (b->ir (slurp "resources/test/scheduler.mch")))
-(init-db scheduler-ir)
+(def scheduler-transformed-ir (read-string (slurp "resources/test/scheduler-ir.edn")))
 
 (deftest scheduler-machine-test
   (testing "The scheduler machine should be changed in some way"
     (is (not= scheduler-ir (boolencode scheduler-ir)))))
 
 (deftest valid-B-machine-test
-  (testing "After the transformation the IR can be translated into a B machine."
-    (is (string? (ir->b (boolencode scheduler-ir))))))
+    (is (string? (ir->b (boolencode scheduler-ir))) "The IR can be translated into a B machine.")
+    (is (= scheduler-transformed-ir (boolencode scheduler-ir)) "The scheduler is correctly translated."))
