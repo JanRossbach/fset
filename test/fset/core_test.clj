@@ -1,7 +1,6 @@
 (ns fset.core-test
   (:require
    [clojure.test :refer [deftest testing is]]
-   [clojure.pprint :refer [pprint]]
    [lisb.translation.util :refer [ir->b b->ir]]
    [fset.core :refer [boolencode]]))
 

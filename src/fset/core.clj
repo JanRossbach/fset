@@ -8,7 +8,7 @@
 (def m 5) ;; MAX-SET-SIZE
 
 
-(defn type?
+(defn- type?
   [expr]
   (match expr
     (_ :guard b/carrier?) true
@@ -18,7 +18,7 @@
     {:tag :fin1-set :set (_ :guard type?)} true
     _ false))
 
-(defn set->bitvector
+(defn- set->bitvector
   [Set]
   ((fn T [e]
      (match e
@@ -37,7 +37,7 @@
    Set))
 
 
-(defn unroll-predicate
+(defn- unroll-predicate
   [pred]
   ((fn T [e]
      (match e
@@ -69,7 +69,7 @@
        _ e))
    pred))
 
-(defn unroll-sub
+(defn- unroll-sub
   [sub]
   ((fn T [e]
      (match e
@@ -82,25 +82,25 @@
        _ e))
    sub))
 
-(defn replace-param
+(defn- replace-param
   [body [parameter element]]
   (s/setval [(s/walker #(= % parameter))] element body))
 
-(defn apply-binding
+(defn- apply-binding
   [body binding]
   (reduce replace-param body binding))
 
-(defn non-det-clause?
+(defn- non-det-clause?
   [pattern]
   (match pattern
     {:tag :any} true
     _ false))
 
-(defn get-non-det-clauses
+(defn- get-non-det-clauses
   [op]
   (s/select (s/walker non-det-clause?) op))
 
-(defn get-non-det-guards
+(defn- get-non-det-guards
   [op]
   (let [non-det-clauses (get-non-det-clauses op)]
     (map (fn [clause]
@@ -108,18 +108,18 @@
              {:tag :any :where w} w))
          non-det-clauses)))
 
-(defn add-guards
+(defn- add-guards
   [op guards]
   (assoc op :body {:tag :select :clauses (list (apply AND guards) (:body op))}))
 
-(defn lift-guards
+(defn- lift-guards
   [op]
   (let [guards (get-non-det-guards op)]
     (if (empty? guards)
       op
       (add-guards op guards))))
 
-(defn new-op
+(defn- new-op
   [old-op binding]
   {:tag :operation
    :name (apply b/create-boolname (:name old-op) (map second binding))
@@ -131,14 +131,14 @@
              (apply-binding binding)
              unroll-sub)})
 
-(defn unroll-operation
+(defn- unroll-operation
   [op]
   (let [bindings (b/get-op-combinations (:name op))]
     (if (seq bindings)
       (map (partial new-op op) bindings)
       (list (assoc op :body (unroll-sub (:body op)))))))
 
-(defn unroll-clause
+(defn- unroll-clause
   [c]
   (match c
          {:tag :variables :values v} {:tag :variables :values (mapcat b/unroll-variable v)}
@@ -147,7 +147,7 @@
          {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation v)}
          _ c))
 
-(defn simplify-formula
+(defn- simplify-formula
   [formula]
   (match formula
     {:tag :not :predicate {:tag :not :predicate p}} p
@@ -170,11 +170,11 @@
     _ nil))
 
 
-(defn simplify-ir
+(defn- simplify-ir
   [ir]
   (s/transform [(s/walker simplify-formula)] simplify-formula ir))
 
-(defn simplify-all
+(defn- simplify-all
   [ir]
   (loop [IR ir]
     (let [next-ir (simplify-ir IR)]
@@ -184,6 +184,7 @@
 
 (defn boolencode
   [ir]
+  (b/setup-backend ir)
   (simplify-all {:tag :machine
                  :name (:name ir)
                  :clauses (map unroll-clause (:clauses ir))}))

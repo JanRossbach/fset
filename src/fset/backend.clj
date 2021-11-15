@@ -38,9 +38,7 @@
                       :ready '(:PID1 :PID2 :PID3)
                       :waiting '(:PID1 :PID2 :PID3)}})
 
-
 ;; HELPERS
-
 
 
 (defn- get-statespace
