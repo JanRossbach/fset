@@ -4,7 +4,7 @@
    [lisb.core :refer [eval-ir-formula]]
    [lisb.prob.animator :refer [state-space!]]
    [lisb.translation.util :refer [lisb->ir ir->ast]]
-   [lisb.translation.lisb2ir :refer [bmember? bcomp-set]])
+   [lisb.translation.lisb2ir :refer [bmember? bcomprehension-set]])
   (:import
    de.prob.animator.domainobjects.ClassicalB
    de.prob.animator.domainobjects.FormulaExpand))
@@ -19,11 +19,11 @@
 
 (declare get-statespace)
 
-(def cache (atom {}))
+(def db (atom {}))
 
 ;; Define mock caching data
 
-(def scheduler-mock-cache
+(def scheduler-mock
    {:set->elems {:PID '(:PID1 :PID2 :PID3)}
     :elem->bools {:PID1 '(:activePID1 :readyPID1 :waitingPID1)
                   :PID2 '(:activePID2 :readyPID2 :waitingPID2)
@@ -40,7 +40,6 @@
 
 ;; HELPERS
 
-
 (defn- get-statespace
   [ir]
   (state-space! (ir->ast ir)))
@@ -51,21 +50,21 @@
 
 (defn- get-set-elems
   [set-id]
-  (let [ss (:ss @cache)]
+  (let [ss (:ss @db)]
     (interpret-animator-result
      (eval-ir-formula ss
-                      (lisb->ir `(bcomp-set [:x] (bmember? :x ~set-id)))))))
+                      (lisb->ir `(bcomprehension-set [:x] (bmember? :x ~set-id)))))))
 
 (defn- get-type
   [formula]
-  (let [ss (:ss @cache)
+  (let [ss (:ss @db)
         formula-ast (ir->ast formula)
         ee (ClassicalB. formula-ast FormulaExpand/TRUNCATE "")]
     (.getType (.typeCheck ss ee))))
 
 (defn- get-possible-var-states
   [ss target-vars other-vars predicate]
-  (let [res (eval-ir-formula ss {:tag :comp-set
+  (let [res (eval-ir-formula ss {:tag :comprehension-set
                                  :identifiers target-vars
                                  :predicate {:tag :exists :identifiers other-vars :predicate predicate}})]
     (if (= res :timeout)
@@ -104,44 +103,40 @@
   [ir ids]
   (seq (s/select [(s/walker (fn [w] (some #(= % w) ids)))] ir)))
 
-
-
-
 ;; Public API
-
 
 (defn setup-backend ;; Call this before testing the backend isolated without an actual translation
   [ir]
-  (reset! cache (assoc
-                 scheduler-mock-cache ;; Hard code the mock. Set to {} when ready to use normally
+  (reset! db (assoc
+                 scheduler-mock ;; Hard code the mock. Set to {} when ready to use normally
                  :ir ir
                  :ss (get-statespace ir))))
 
 (defn carrier?
   [id]
-  (seq (s/select [SETS :identifier #(= % id)] (:ir @cache))))
+  (seq (s/select [SETS :identifier #(= % id)] (:ir @db))))
 
 (defn create-boolname [& ids]
   (keyword (apply str (map name (flatten ids)))))
 
 (defn set-element?
   [id]
-  (seq (s/select [:set->elems s/MAP-VALS s/ALL #(= % id)] @cache)))
+  (seq (s/select [:set->elems s/MAP-VALS s/ALL #(= % id)] @db)))
 
 (defn variable?
   [id]
-  (seq (s/select [VARIABLES s/ALL #(= % id)] (:ir @cache))))
+  (seq (s/select [VARIABLES s/ALL #(= % id)] (:ir @db))))
 
 (defn unrollable-var?
   [var-id]
-  (let [c @cache
+  (let [c @db
         m (:variable->unroll? c)]
     (if (contains? m var-id)
       (get m var-id)
       (if (variable? var-id)
         (if (finite-var? var-id)
-          (do (swap! cache assoc :variable->unroll? (assoc m var-id :hello)) true)
-          (do (swap! cache assoc :variable->unroll? (assoc m var-id false)) false))
+          (do (swap! db assoc :variable->unroll? (assoc m var-id :hello)) true)
+          (do (swap! db assoc :variable->unroll? (assoc m var-id false)) false))
         false))))
 
 (defn enumerable?
@@ -150,7 +145,7 @@
 
 (defn- varid->elems
   [id]
-  (let [elem-map (:variable->elems @cache)]
+  (let [elem-map (:variable->elems @db)]
     (get elem-map id)))
 
 (defn unroll-variable
@@ -161,7 +156,7 @@
 
 (defn get-all-elems-from-elem
   [elem-id]
-  (->> (:set->elems @cache)
+  (->> (:set->elems @db)
        (into [])
        (map second)
        (filter (fn [elems] (some #(= % elem-id) elems)))
@@ -169,9 +164,9 @@
 
 (defn pick-bool-var
   [formulas el-id]
-  (filter (fn [formula] (involves? formula (get (:elem->bools @cache) el-id))) formulas))
+  (filter (fn [formula] (involves? formula (get (:elem->bools @db) el-id))) formulas))
 
 (defn get-op-combinations [op-id]
-  (let [db @cache
+  (let [db @db
         op-combs (:op->bindings db)]
     (get op-combs op-id)))

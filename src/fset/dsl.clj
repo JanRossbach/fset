@@ -1,6 +1,6 @@
 (ns fset.dsl
   (:require
-   [lisb.translation.lisb2ir :refer [b= bpred->bool band bor bnot b<=> b=> bsubset? bmember? bif-expr bassign]]))
+   [lisb.translation.lisb2ir :refer [b= bpred->bool band bor bnot bequivalence bimplication bsubset? bmember? bif-expr bassign]]))
 
 (def TRUE
   (b= :TRUE :TRUE))
@@ -22,12 +22,12 @@
   (bnot p))
 
 (defn <=> [& ps]
-  (apply b<=> ps))
+  (apply bequivalence ps))
 
 (defn => [& ps]
-  (apply b=> ps))
+  (apply bimplication ps))
 
-(defn EQUAL [l r]
+(defn EQUALS [l r]
   (b= l r))
 
 (defn SUBSET [sub set]

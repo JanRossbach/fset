@@ -13,8 +13,8 @@
   (match ir
          {:tag :variables :values v} {:tag :variables :values (concat (filter #(not= id %) v) varnames)}
          {:tag :apply :f (_ :guard #(= % id)) :args ([varname] :seq)} varname
-         {:tag :assign
-          :identifiers (_ :guard #(= % (list id)))
+         {:tag :assignment
+          :ids (_ :guard #(= % (list id)))
           :values ([S] :seq)} (apply bparallel-substitution (map (fn [[varname val]] (bassign varname val)) S))
          _ nil))
 

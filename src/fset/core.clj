@@ -1,6 +1,6 @@
 (ns fset.core
   (:require
-   [fset.dsl :refer [AND OR =TRUE <=> NOT TRUE FALSE EQUAL => BOOL BOOLDEFS IF ASSIGN]]
+   [fset.dsl :refer [AND OR =TRUE <=> NOT TRUE FALSE EQUALS => BOOL BOOLDEFS IF ASSIGN]]
    [clojure.core.match :refer [match]]
    [com.rpl.specter :as s]
    [fset.backend :as b]))
@@ -14,8 +14,8 @@
     (_ :guard b/carrier?) true
     {:tag :power-set :set (_ :guard type?)} true
     {:tag :power1-set :set (_ :guard type?)} true
-    {:tag :fin-set :set (_ :guard type?)} true
-    {:tag :fin1-set :set (_ :guard type?)} true
+    {:tag :fin :set (_ :guard type?)} true
+    {:tag :fin1 :set (_ :guard type?)} true
     _ false))
 
 (defn- set->bitvector
@@ -27,10 +27,10 @@
        {:tag :union :sets ([A B] :seq)} (map (fn [a b] (OR a b)) (T A) (T B))
        {:tag :intersection :sets ([A B] :seq)} (map (fn [a b] (AND a b)) (T A) (T B))
        {:tag :difference :sets ([A B] :seq)} (map (fn [a b] (AND a (NOT b))) (T A) (T B))
-       {:tag :general-union :set-of-sets ss} (apply map OR (map T ss))
-       {:tag :general-intersection :set-of-sets ss} (apply map AND (map T ss))
+       {:tag :unite-sets :set-of-sets ss} (apply map OR (map T ss))
+       {:tag :intersect-sets :set-of-sets ss} (apply map AND (map T ss))
        {:tag :card :set s} (list {:tag :plus :numbers (map (fn [p] (IF (=TRUE (BOOL p)) 1 0)) (T s))})
-       {:tag :minus :numbers ns} (T {:tag :difference :sets ns})
+       {:tag :sub :nums ns} (T {:tag :difference :sets ns})
        (n :guard number?) (list n)
        (variable :guard b/variable?) (map =TRUE (b/unroll-variable variable))
        _ e))
@@ -41,11 +41,11 @@
   [pred]
   ((fn T [e]
      (match e
-         ;; equality
-       {:tag :equal :left l :right #{}} (list (apply AND (map NOT (T l))))
-       {:tag :equal :left #{} :right r} (list (apply AND (map NOT (T r))))
-       {:tag :equal :left l :right r} (list (apply AND (map <=> (T l) (T r))))
-       {:tag :not-equal :left l :right r} (list (apply NOT (T (EQUAL l r))))
+         ;; equalsity
+       {:tag :equals :left l :right #{}} (list (apply AND (map NOT (T l))))
+       {:tag :equals :left #{} :right r} (list (apply AND (map NOT (T r))))
+       {:tag :equals :left l :right r} (list (apply AND (map <=> (T l) (T r))))
+       {:tag :not-equals :left l :right r} (list (apply NOT (T (EQUALS l r))))
        {:tag :subset :subset (s :guard b/unrollable-var?) :set (_ :guard type?)} (list (BOOLDEFS (b/unroll-variable s)))
        {:tag :subset :subset s :set S} (map (fn [a b] (=> a b)) (T s) (T S))
        {:tag :subset-strict :subset s :set S} (let [Ts (T s) TS (T S)] (cons (apply OR (map (fn [a b] (AND a (NOT b))) Ts TS))
@@ -74,11 +74,11 @@
   ((fn T [e]
      (match e
        {:tag :skip} (list {:tag :skip})
-       {:tag :parallel-substitution :substitutions substitutions} {:tag :parallel-substitution :substitutions (map T substitutions)}
-       {:tag :assign :identifiers identifiers :values values} {:tag :parallel-substitution :substitutions (map (fn [v p] (ASSIGN v (BOOL p))) (mapcat b/unroll-variable identifiers) (mapcat set->bitvector values))}
-       {:tag :if-sub :condition condition :then then :else else} {:tag :if-sub :condition (apply AND (unroll-predicate condition)) :then (T then) :else (T else)}
+       {:tag :parallel-substitution :subs substitutions} {:tag :parallel-substitution :subs (map T substitutions)}
+       {:tag :assignment :id-vals ([id value] :seq)} {:tag :parallel-substitution :subs (map (fn [v p] (ASSIGN v (BOOL p))) (b/unroll-variable id) (set->bitvector value))}
+       {:tag :if-sub :cond condition :then then :else else} {:tag :if-sub :cond (apply AND (unroll-predicate condition)) :then (T then) :else (T else)}
        {:tag :select :clauses ([A B & _] :seq)} {:tag :select :clauses (list (apply AND (unroll-predicate A)) (T B))}
-       {:tag :any :identifiers _ :where _ :then then} (T then)
+       {:tag :any :ids _ :where _ :then then} (T then)
        _ e))
    sub))
 
@@ -121,10 +121,10 @@
 
 (defn- new-op
   [old-op binding]
-  {:tag :operation
+  {:tag :op
    :name (apply b/create-boolname (:name old-op) (map second binding))
-   :return []
-   :parameters []
+   :returns []
+   :args []
    :body (-> old-op
              lift-guards
              :body
@@ -150,22 +150,22 @@
 (defn- simplify-formula
   [formula]
   (match formula
-    {:tag :not :predicate {:tag :not :predicate p}} p
-    {:tag :pred->bool :predicate {:tag :equal :left :TRUE :right :FALSE}} :FALSE
-    {:tag :pred->bool :predicate {:tag :equal :left :TRUE :right :TRUE}} :TRUE
-    {:tag :not :predicate {:tag :equal :left :TRUE :right :TRUE}} FALSE
-    {:tag :not :predicate {:tag :equal :left :TRUE :right :FALSE}} TRUE
-    {:tag :or :predicates (ps :guard #(= 1 (count %)))} (first ps)
-    {:tag :and :predicates (ps :guard #(= 1 (count %)))} (first ps)
-    {:tag :and :predicates (_ :guard (fn [ps] (some #(= % FALSE) ps)))} FALSE
-    {:tag :or :predicates (_ :guard (fn [ps] (some #(= % TRUE) ps)))} TRUE
-    {:tag :and :predicates (ps :guard (fn [ps] (some #(= % TRUE) ps)))} {:tag :and :predicates (filter #(not= % TRUE) ps)}
-    {:tag :or :predicates (ps :guard (fn [ps] (some #(= % FALSE) ps)))} {:tag :or :predicates (filter #(not= % FALSE) ps)}
-    {:tag :equal :left {:tag :pred->bool :predicate p} :right :TRUE} p
-    {:tag :assign :identifiers ([a] :seq) :values ([{:tag :pred->bool :predicate {:tag :equal :left b :right :TRUE}}] :seq)} (if (= a b) s/NONE nil)
-    {:tag :pred->bool :predicate {:tag :plus :numbers n}} {:tag :plus :numbers n}
-    {:tag :parallel-substitution :substitutions (substitutions :guard #(= (count %) 1))} (first substitutions)
-    {:tag :parallel-substitution :substitutions (_ :guard empty?)} s/NONE
+    {:tag :not :pred {:tag :not :pred p}} p
+    {:tag :pred->bool :pred {:tag :equals :left :TRUE :right :FALSE}} :FALSE
+    {:tag :pred->bool :pred {:tag :equals :left :TRUE :right :TRUE}} :TRUE
+    {:tag :not :pred {:tag :equals :left :TRUE :right :TRUE}} FALSE
+    {:tag :not :pred {:tag :equals :left :TRUE :right :FALSE}} TRUE
+    {:tag :or :preds (ps :guard #(= 1 (count %)))} (first ps)
+    {:tag :and :preds (ps :guard #(= 1 (count %)))} (first ps)
+    {:tag :and :preds (_ :guard (fn [ps] (some #(= % FALSE) ps)))} FALSE
+    {:tag :or :preds (_ :guard (fn [ps] (some #(= % TRUE) ps)))} TRUE
+    {:tag :and :preds (ps :guard (fn [ps] (some #(= % TRUE) ps)))} {:tag :and :preds (filter #(not= % TRUE) ps)}
+    {:tag :or :preds (ps :guard (fn [ps] (some #(= % FALSE) ps)))} {:tag :or :preds (filter #(not= % FALSE) ps)}
+    {:tag :equals :left {:tag :pred->bool :pred p} :right :TRUE} p
+    {:tag :assignment :id-vals ([a {:tag :pred->bool :pred {:tag :equals :left b :right :TRUE}}] :seq)} (if (= a b) s/NONE nil)
+    {:tag :pred->bool :pred {:tag :add :nums n}} {:tag :add :nums n}
+    {:tag :parallel-substitution :subs (substitutions :guard #(= (count %) 1))} (first substitutions)
+    {:tag :parallel-substitution :subs (_ :guard empty?)} s/NONE
     {:tag :select :clauses ([outer-guard {:tag :select :clauses ([inner-guard & r] :seq)}] :seq)} {:tag :select :clauses (cons (AND outer-guard inner-guard) r)}
     _ nil))
 
