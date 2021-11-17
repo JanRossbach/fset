@@ -29,7 +29,7 @@
        {:tag :difference :sets ([A B] :seq)} (map (fn [a b] (AND a (NOT b))) (T A) (T B))
        {:tag :unite-sets :set-of-sets ss} (apply map OR (map T ss))
        {:tag :intersect-sets :set-of-sets ss} (apply map AND (map T ss))
-       {:tag :card :set s} (list {:tag :plus :numbers (map (fn [p] (IF (=TRUE (BOOL p)) 1 0)) (T s))})
+       {:tag :cardinality :set s} (list {:tag :add :nums (map (fn [p] (IF (=TRUE (BOOL p)) 1 0)) (T s))})
        {:tag :sub :nums ns} (T {:tag :difference :sets ns})
        (n :guard number?) (list n)
        (variable :guard b/variable?) (map =TRUE (b/unroll-variable variable))
@@ -46,24 +46,24 @@
        {:tag :equals :left #{} :right r} (list (apply AND (map NOT (T r))))
        {:tag :equals :left l :right r} (list (apply AND (map <=> (T l) (T r))))
        {:tag :not-equals :left l :right r} (list (apply NOT (T (EQUALS l r))))
-       {:tag :subset :subset (s :guard b/unrollable-var?) :set (_ :guard type?)} (list (BOOLDEFS (b/unroll-variable s)))
-       {:tag :subset :subset s :set S} (map (fn [a b] (=> a b)) (T s) (T S))
+       {:tag :subset :sets ([(s :guard b/unrollable-var?) (_ :guard type?)] :seq)} (list (BOOLDEFS (b/unroll-variable s)))
+       {:tag :subset :sets ([s S] :seq)} (map (fn [a b] (=> a b)) (T s) (T S))
        {:tag :subset-strict :subset s :set S} (let [Ts (T s) TS (T S)] (cons (apply OR (map (fn [a b] (AND a (NOT b))) Ts TS))
                                                                              (map (fn [a b] (=> a b)) Ts TS)))
          ;; logical operators
-       {:tag :and :predicates ps} (list (apply AND (mapcat T ps)))
-       {:tag :or :predicates ps} (list (apply OR (mapcat T ps)))
-       {:tag :not :predicate p} (map NOT (T p))
-       {:tag :equivalence :predicates ([A B] :seq)} (list (<=> (apply AND (T A)) (apply AND (T B))))
-       {:tag :implication :predicates ([A B] :seq)} (list (=> (apply AND (T A)) (apply AND (T B))))
+       {:tag :and :preds ps} (list (apply AND (mapcat T ps)))
+       {:tag :or :preds ps} (list (apply OR (mapcat T ps)))
+       {:tag :not :pred p} (map NOT (T p))
+       {:tag :equivalence :preds ([A B] :seq)} (list (<=> (apply AND (T A)) (apply AND (T B))))
+       {:tag :implication :preds ([A B] :seq)} (list (=> (apply AND (T A)) (apply AND (T B))))
 
        ;; Member
-       {:tag :member :element (_ :guard b/set-element?) :set (_ :guard type?)} '()
-       {:tag :member :element (el-id :guard b/set-element?) :set v} (b/pick-bool-var (set->bitvector v) el-id)
-       {:tag :member :element (v :guard b/unrollable-var?) :set (_ :guard type?)} (list (BOOLDEFS (b/unroll-variable v)))
+       {:tag :member :elem (_ :guard b/set-element?) :set (_ :guard type?)} '()
+       {:tag :member :elem (el-id :guard b/set-element?) :set v} (b/pick-bool-var (set->bitvector v) el-id)
+       {:tag :member :elem (v :guard b/unrollable-var?) :set (_ :guard type?)} (list (BOOLDEFS (b/unroll-variable v)))
 
        ;; Numbers
-       {:tag :less-eq :numbers ns} (list {:tag :less-eq :numbers (mapcat T ns)})
+       {:tag :less-equals :nums ns} (list {:tag :less-equals :nums (mapcat T ns)})
 
        (SET :guard b/enumerable?) (set->bitvector SET)
        _ e))
@@ -74,11 +74,11 @@
   ((fn T [e]
      (match e
        {:tag :skip} (list {:tag :skip})
-       {:tag :parallel-substitution :subs substitutions} {:tag :parallel-substitution :subs (map T substitutions)}
-       {:tag :assignment :id-vals ([id value] :seq)} {:tag :parallel-substitution :subs (map (fn [v p] (ASSIGN v (BOOL p))) (b/unroll-variable id) (set->bitvector value))}
+       {:tag :parallel-sub :subs substitutions} {:tag :parallel-sub :subs (map T substitutions)}
+       {:tag :assignment :id-vals ([id value] :seq)} {:tag :parallel-sub :subs (map (fn [v p] (ASSIGN v (BOOL p))) (b/unroll-variable id) (set->bitvector value))}
        {:tag :if-sub :cond condition :then then :else else} {:tag :if-sub :cond (apply AND (unroll-predicate condition)) :then (T then) :else (T else)}
        {:tag :select :clauses ([A B & _] :seq)} {:tag :select :clauses (list (apply AND (unroll-predicate A)) (T B))}
-       {:tag :any :ids _ :where _ :then then} (T then)
+       {:tag :any :ids _ :pred _ :subs then} {:tag :parallel-sub :subs (map T then)}
        _ e))
    sub))
 
@@ -105,7 +105,7 @@
   (let [non-det-clauses (get-non-det-clauses op)]
     (map (fn [clause]
            (match clause
-             {:tag :any :where w} w))
+             {:tag :any :pred w} w))
          non-det-clauses)))
 
 (defn- add-guards
@@ -164,8 +164,8 @@
     {:tag :equals :left {:tag :pred->bool :pred p} :right :TRUE} p
     {:tag :assignment :id-vals ([a {:tag :pred->bool :pred {:tag :equals :left b :right :TRUE}}] :seq)} (if (= a b) s/NONE nil)
     {:tag :pred->bool :pred {:tag :add :nums n}} {:tag :add :nums n}
-    {:tag :parallel-substitution :subs (substitutions :guard #(= (count %) 1))} (first substitutions)
-    {:tag :parallel-substitution :subs (_ :guard empty?)} s/NONE
+    {:tag :parallel-sub :subs (substitutions :guard #(= (count %) 1))} (first substitutions)
+    {:tag :parallel-sub :subs (_ :guard empty?)} s/NONE
     {:tag :select :clauses ([outer-guard {:tag :select :clauses ([inner-guard & r] :seq)}] :seq)} {:tag :select :clauses (cons (AND outer-guard inner-guard) r)}
     _ nil))
 
