@@ -1,10 +1,11 @@
 (ns fset.backend
   (:require
+   [clojure.core.match :refer [match]]
    [com.rpl.specter :as s]
    [lisb.core :refer [eval-ir-formula]]
    [lisb.prob.animator :refer [state-space!]]
-   [lisb.translation.util :refer [lisb->ir ir->ast]]
-   [lisb.translation.lisb2ir :refer [bmember? bcomprehension-set]])
+   [lisb.translation.util :refer [lisb->ir ir->ast b->ir]]
+   [lisb.translation.lisb2ir :refer [bmember? bcomprehension-set bexists band b=]])
   (:import
    de.prob.animator.domainobjects.ClassicalB
    de.prob.animator.domainobjects.FormulaExpand))
@@ -15,38 +16,23 @@
 (def CLAUSES (s/if-path (s/must :ir) [:ir :clauses] [:clauses]))
 (defn- CLAUSE [^clojure.lang.Keyword name] (s/path [CLAUSES s/ALL (TAG name)]))
 (def VARIABLES (s/path [(CLAUSE :variables) :values]))
+(def INVARIANTS (s/path [(CLAUSE :invariants) :values]))
+(def PROPERTIES (s/path [(CLAUSE :properties) :values]))
+(def CONSTANTS (s/path [(CLAUSE :constants) :values]))
 (def SETS (s/path [(CLAUSE :sets) :values s/ALL]))
 
-(declare get-statespace)
+(declare get-statespace get-max-size create-boolname)
 
 (def db (atom {}))
 
-;; Define mock caching data
-
-(def scheduler-mock
-   {:set->elems {:PID '(:PID1 :PID2 :PID3)}
-    :elem->bools {:PID1 '(:activePID1 :readyPID1 :waitingPID1)
-                  :PID2 '(:activePID2 :readyPID2 :waitingPID2)
-                  :PID3 '(:activePID3 :readyPID3 :waitingPID3)}
-    :op->bindings {:nr-ready []
-                   :new [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]]
-                   :ready [[[:rr :PID1]] [[:rr :PID2]] [[:rr :PID3]]]
-                   :del [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]]
-                   :swap [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]]}
-    :variable->unroll? {:ready true :waiting true}
-    :variable->elems {:active '(:PID1 :PID2 :PID3)
-                      :ready '(:PID1 :PID2 :PID3)
-                      :waiting '(:PID1 :PID2 :PID3)}})
-
 ;; HELPERS
 
-(defn- get-statespace
-  [ir]
-  (state-space! (ir->ast ir)))
-
-(defn- interpret-animator-result
+(defn interpret-animator-result
   [result]
   (sort (map keyword result)))
+
+(def get-statespace
+  (memoize (fn [ir] (state-space! (ir->ast ir)))))
 
 (defn- get-set-elems
   [set-id]
@@ -55,7 +41,7 @@
      (eval-ir-formula ss
                       (lisb->ir `(bcomprehension-set [:x] (bmember? :x ~set-id)))))))
 
-(defn- get-type
+(defn get-type
   [formula]
   (let [ss (:ss @db)
         formula-ast (ir->ast formula)
@@ -65,108 +51,141 @@
 (defn- get-possible-var-states
   [ss target-vars other-vars predicate]
   (let [res (eval-ir-formula ss {:tag :comprehension-set
-                                 :identifiers target-vars
-                                 :predicate {:tag :exists :identifiers other-vars :predicate predicate}})]
+                                 :ids target-vars
+                                 :pred {:tag :exists :ids other-vars :pred predicate}})]
     (if (= res :timeout)
       (throw (ex-info "Call to the API timed out." {:target-var target-vars
                                                     :other-vars other-vars
                                                     :predicate predicate}))
       res)))
 
-(defn- determine-set-elems
-  [set-to-rewrite d-set-size]
-  (if true ;;(u/is-deferred? ir set-to-rewrite)
-    (map (fn [i] (keyword (str (name set-to-rewrite) i))) (range d-set-size))
-    (map keyword (get-set-elems set-to-rewrite))))
+(defn- typestring->ir
+  [type-str]
+  (let [query-str (str "MACHINE scheduler\nCONSTANTS x\nPROPERTIES x:" type-str "\nEND")
+        query-ir (b->ir query-str)]
+    (first (s/select [(CLAUSE :properties) :values s/FIRST :set] query-ir))))
 
-(defn- gen-pow-set-vars
-  [ss set-id var-id]
-  (vec (map #(keyword (str (name var-id) (name %))) (get-set-elems set-id))))
+(defn get-props-as-pred
+  []
+  (let [props (s/select [PROPERTIES s/ALL] (:ir @db))]
+    (if (seq props)
+      (apply band props)
+      (b= :TRUE :TRUE))))
 
-(defn- extract-ts-from-string
-  [type-string]
-  (if (re-matches #"POW\((.)*\)" type-string)
-    (keyword (subs type-string 4 (dec (count type-string))))
-    nil))
+(defn get-invars-as-pred
+  []
+  (let [invars (s/select [INVARIANTS s/ALL] (:ir @db))]
+    (if (seq invars)
+      (apply band invars)
+      (b= :TRUE :TRUE))))
 
-(defn- api-str->keyword
-  [var api-result]
-  (into #{}
-        (for [r api-result]
-          (into #{} (map (fn [s] (keyword (str (name var) s)))  r)))))
+(defn unroll-set-expr
+  [set-expr]
+  (let [{:keys [ir ss]} @db
+        vars (s/select [VARIABLES s/ALL] ir)
+        constants (s/select [CONSTANTS s/ALL] ir)
+        invariant (get-invars-as-pred)
+        properties (get-props-as-pred)]
+    (eval-ir-formula
+     ss
+     (bcomprehension-set
+      [:x]
+      (bexists
+       (concat vars constants)
+       (band
+        (bmember? :x set-expr)
+        invariant
+        properties))))))
 
-(defn- finite-var?
-  [_]
-  true)
 
 (defn- involves?
   [ir ids]
   (seq (s/select [(s/walker (fn [w] (some #(= % w) ids)))] ir)))
 
+(defn- deff-set->enum-set
+  [size {:keys [id]}]
+  {:tag :enumerated-set
+   :id id
+   :elems (map (fn [i] (create-boolname id i)) (range 1 (inc size)))})
+
+(defn- replace-def-sets-with-enum-sets
+  [size ir]
+  (s/transform [SETS (TAG :deferred-set)] (partial deff-set->enum-set size) ir))
+
 ;; Public API
+
+(defn get-max-size [] (:max-size @db))
 
 (defn setup-backend ;; Call this before testing the backend isolated without an actual translation
   [ir]
-  (reset! db (assoc
-                 scheduler-mock ;; Hard code the mock. Set to {} when ready to use normally
-                 :ir ir
-                 :ss (get-statespace ir))))
+  (let [nir (replace-def-sets-with-enum-sets 3 ir)]
+    (reset! db (assoc
+                {}
+                :max-size 5
+                :ir nir
+                :ss (get-statespace nir)))))
 
 (defn carrier?
   [id]
-  (seq (s/select [SETS :identifier #(= % id)] (:ir @db))))
+  (seq (s/select [SETS :id #(= % id)] (:ir @db))))
 
 (defn create-boolname [& ids]
-  (keyword (apply str (map name (flatten ids)))))
+  (keyword (apply str (map (fn [id] (if (keyword? id) (name id) id)) (flatten ids)))))
 
 (defn set-element?
   [id]
-  (seq (s/select [:set->elems s/MAP-VALS s/ALL #(= % id)] @db)))
+  (seq (s/select [SETS :elems s/ALL #(= % id)] (:ir @db))))
 
 (defn variable?
   [id]
   (seq (s/select [VARIABLES s/ALL #(= % id)] (:ir @db))))
 
+(defn finite?
+  [expr]
+  (get-type expr))
+
 (defn unrollable-var?
   [var-id]
-  (let [c @db
-        m (:variable->unroll? c)]
-    (if (contains? m var-id)
-      (get m var-id)
-      (if (variable? var-id)
-        (if (finite-var? var-id)
-          (do (swap! db assoc :variable->unroll? (assoc m var-id :hello)) true)
-          (do (swap! db assoc :variable->unroll? (assoc m var-id false)) false))
-        false))))
-
-(defn enumerable?
-  [s]
-  true)
+  (and (variable? var-id) (finite? var-id)))
 
 (defn- varid->elems
-  [id]
-  (let [elem-map (:variable->elems @db)]
-    (get elem-map id)))
+  [var-id]
+  (let [TS (get-type var-id)
+        TIR (typestring->ir TS)]
+    (match TIR
+           {:tag :power-set :set S} (get-set-elems S))))
 
 (defn unroll-variable
   [var-id]
-  (if (unrollable-var? var-id)
+  (if (and (variable? var-id) (finite? var-id))
     (map (partial create-boolname var-id) (varid->elems var-id))
     (list var-id)))
 
 (defn get-all-elems-from-elem
   [elem-id]
-  (->> (:set->elems @db)
-       (into [])
-       (map second)
-       (filter (fn [elems] (some #(= % elem-id) elems)))
-       (first)))
+  (s/select [SETS (fn [m] (some #(= % elem-id) (:elems m))) :elems s/ALL] (:ir @db)))
+
+(defn elem->bools
+  [elem]
+  (let [TS (get-type elem)
+        TIR (typestring->ir TS)
+        vars (first (s/select [VARIABLES] (:ir @db)))
+        relevant-vars (filter #(= (get-type %) (str "POW(" TS ")")) vars)]
+    (map (fn [var-id] (create-boolname var-id elem)) relevant-vars)))
+
+;; FIXME
+(defn op->bindings
+  [op]
+  (match op
+    (_ :guard #(= (:name %) :nr_ready)) []
+    (_ :guard #(= (:name %) :new)) [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]]
+    (_ :guard #(= (:name %) :ready)) [[[:rr :PID1]] [[:rr :PID2]] [[:rr :PID3]]]
+    (_ :guard #(= (:name %) :del)) [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]]
+    (_ :guard #(= (:name %) :swap)) [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]]))
 
 (defn pick-bool-var
   [formulas el-id]
-  (filter (fn [formula] (involves? formula (get (:elem->bools @db) el-id))) formulas))
+  (filter (fn [formula] (involves? formula (elem->bools el-id))) formulas))
 
 (defn get-op-combinations [op-id]
-  (let [db @db
-        op-combs (:op->bindings db)]
-    (get op-combs op-id)))
+    (op->bindings {:name op-id}))

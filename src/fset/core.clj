@@ -5,7 +5,6 @@
    [com.rpl.specter :as s]
    [fset.backend :as b]))
 
-(def m 5) ;; MAX-SET-SIZE
 
 
 (defn- type?
@@ -22,7 +21,7 @@
   [Set]
   ((fn T [e]
      (match e
-       #{} (repeat m FALSE)
+       #{} (repeat (b/get-max-size) FALSE)
        (singleton-set :guard #(and (set? %) (= 1 (count %)))) (let [x (first singleton-set)] (map (fn [e] (if (= e x) TRUE FALSE)) (b/get-all-elems-from-elem x)))
        {:tag :union :sets ([A B] :seq)} (map (fn [a b] (OR a b)) (T A) (T B))
        {:tag :intersection :sets ([A B] :seq)} (map (fn [a b] (AND a b)) (T A) (T B))
@@ -65,7 +64,7 @@
        ;; Numbers
        {:tag :less-equals :nums ns} (list {:tag :less-equals :nums (mapcat T ns)})
 
-       (SET :guard b/enumerable?) (set->bitvector SET)
+       (SET :guard b/finite?) (set->bitvector SET)
        _ e))
    pred))
 
@@ -168,7 +167,6 @@
     {:tag :parallel-sub :subs (_ :guard empty?)} s/NONE
     {:tag :select :clauses ([outer-guard {:tag :select :clauses ([inner-guard & r] :seq)}] :seq)} {:tag :select :clauses (cons (AND outer-guard inner-guard) r)}
     _ nil))
-
 
 (defn- simplify-ir
   [ir]
