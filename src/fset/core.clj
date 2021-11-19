@@ -89,23 +89,6 @@
   [body binding]
   (reduce replace-param body binding))
 
-(defn- non-det-clause?
-  [pattern]
-  (match pattern
-    {:tag :any} true
-    _ false))
-
-(defn- get-non-det-clauses
-  [op]
-  (s/select (s/walker non-det-clause?) op))
-
-(defn- get-non-det-guards
-  [op]
-  (let [non-det-clauses (get-non-det-clauses op)]
-    (map (fn [clause]
-           (match clause
-             {:tag :any :pred w} w))
-         non-det-clauses)))
 
 (defn- add-guards
   [op guards]
@@ -113,7 +96,7 @@
 
 (defn- lift-guards
   [op]
-  (let [guards (get-non-det-guards op)]
+  (let [guards (b/get-non-det-guards op)]
     (if (empty? guards)
       op
       (add-guards op guards))))
@@ -132,7 +115,7 @@
 
 (defn- unroll-operation
   [op]
-  (let [bindings (b/get-op-combinations (:name op))]
+  (let [bindings (b/op->bindings op)]
     (if (seq bindings)
       (map (partial new-op op) bindings)
       (list (assoc op :body (unroll-sub (:body op)))))))

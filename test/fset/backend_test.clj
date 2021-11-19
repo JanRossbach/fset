@@ -71,13 +71,13 @@
   (is (= (list (b= :activePID3 :FALSE)) (b/pick-bool-var (list (b= :activePID1 :TRUE) (b= :activePID2 :TRUE) (b= :activePID3 :FALSE)) :PID3))))
 
 (deftest get-op-combinations-test-scheduler
-  (b/setup-backend scheduler-ir)
   (testing "The scheduler Operation Bindings are calculated correctly."
-    (is (= [] (b/get-op-combinations :nr_ready)))
-    (is (= [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]] (b/get-op-combinations :new)))
-    (is (= [[[:rr :PID1]] [[:rr :PID2]] [[:rr :PID3]]] (b/get-op-combinations :ready)))
-    (is (= [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]] (b/get-op-combinations :del)))
-    (is (= [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]] (b/get-op-combinations :swap)))))
+    (b/setup-backend scheduler-ir)
+    (is (= [] (b/op->bindings (b/get-operation :nr_ready))))
+    (is (= [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]] (b/op->bindings (b/get-operation :new))))
+    (is (= [[[:rr :PID1]] [[:rr :PID2]] [[:rr :PID3]]] (b/op->bindings (b/get-operation :ready))))
+    (is (= [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]] (b/op->bindings (b/get-operation :del))))
+    (is (= [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]] (b/op->bindings (b/get-operation :swap))))))
 
 ;; Tests on the Test machine
 
@@ -92,3 +92,8 @@
   (is (b/set-element? :B1))
   (is (b/set-element? :B2))
   (is (not (b/set-element? :active))))
+
+(b/get-param-elems (b/get-operation :new) :pp)
+
+;; (clojure.pprint/pprint (band {:tag :and, :preds '({:tag :member, :elem :pp, :set :PID} {:tag :member, :elem :pp, :set :active} {:tag :member, :elem :pp, :set {:tag :union, :sets (:ready :waiting)}})}
+;;                              (b/get-invars-as-pred)))

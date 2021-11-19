@@ -4,8 +4,8 @@
    [com.rpl.specter :as s]
    [lisb.core :refer [eval-ir-formula]]
    [lisb.prob.animator :refer [state-space!]]
-   [lisb.translation.util :refer [lisb->ir ir->ast b->ir]]
-   [lisb.translation.lisb2ir :refer [bmember? bcomprehension-set bexists band b=]])
+   [lisb.translation.util :refer [ir->ast b->ir]]
+   [lisb.translation.lisb2ir :refer [bmember? bcomprehension-set bexists band]])
   (:import
    de.prob.animator.domainobjects.ClassicalB
    de.prob.animator.domainobjects.FormulaExpand))
@@ -20,6 +20,7 @@
 (def PROPERTIES (s/path [(CLAUSE :properties) :values]))
 (def CONSTANTS (s/path [(CLAUSE :constants) :values]))
 (def SETS (s/path [(CLAUSE :sets) :values s/ALL]))
+(defn OPERATION [name] (s/path [(CLAUSE :operations) :values s/ALL #(= (:name %) name)]))
 
 (declare get-statespace get-max-size create-boolname)
 
@@ -35,11 +36,12 @@
   (memoize (fn [ir] (state-space! (ir->ast ir)))))
 
 (defn- get-set-elems
-  [set-id]
+  [set-ir]
   (let [ss (:ss @db)]
     (interpret-animator-result
-     (eval-ir-formula ss
-                      (lisb->ir `(bcomprehension-set [:x] (bmember? :x ~set-id)))))))
+     (eval-ir-formula
+      ss
+      (bcomprehension-set [:x] (bmember? :x set-ir))))))
 
 (defn get-type
   [formula]
@@ -50,9 +52,9 @@
 
 (defn- get-possible-var-states
   [ss target-vars other-vars predicate]
-  (let [res (eval-ir-formula ss {:tag :comprehension-set
-                                 :ids target-vars
-                                 :pred {:tag :exists :ids other-vars :pred predicate}})]
+  (let [res (eval-ir-formula ss
+                             (bcomprehension-set target-vars
+                                                 (bexists other-vars predicate)))]
     (if (= res :timeout)
       (throw (ex-info "Call to the API timed out." {:target-var target-vars
                                                     :other-vars other-vars
@@ -70,33 +72,21 @@
   (let [props (s/select [PROPERTIES s/ALL] (:ir @db))]
     (if (seq props)
       (apply band props)
-      (b= :TRUE :TRUE))))
+      {:tag :and :preds '()})))
 
 (defn get-invars-as-pred
   []
   (let [invars (s/select [INVARIANTS s/ALL] (:ir @db))]
     (if (seq invars)
       (apply band invars)
-      (b= :TRUE :TRUE))))
+      {:tag :and :preds '()})))
 
-(defn unroll-set-expr
-  [set-expr]
-  (let [{:keys [ir ss]} @db
-        vars (s/select [VARIABLES s/ALL] ir)
-        constants (s/select [CONSTANTS s/ALL] ir)
-        invariant (get-invars-as-pred)
-        properties (get-props-as-pred)]
-    (eval-ir-formula
-     ss
-     (bcomprehension-set
-      [:x]
-      (bexists
-       (concat vars constants)
-       (band
-        (bmember? :x set-expr)
-        invariant
-        properties))))))
-
+(defn get-props-and-invars-as-pred
+  []
+  (let [props (:preds (get-props-as-pred))
+        invars (:preds (get-invars-as-pred))]
+    {:tag :and
+     :preds (concat props invars)}))
 
 (defn- involves?
   [ir ids]
@@ -112,7 +102,30 @@
   [size ir]
   (s/transform [SETS (TAG :deferred-set)] (partial deff-set->enum-set size) ir))
 
-;; Public API
+(defn- non-det-clause?
+  [pattern]
+  (match pattern
+    {:tag :any} true
+    _ false))
+
+(defn- get-non-det-clauses
+  [op]
+  (s/select (s/walker non-det-clause?) op))
+
+(defn get-non-det-guards
+  [op]
+  (let [non-det-clauses (get-non-det-clauses op)]
+    (map (fn [clause]
+           (match clause
+             {:tag :any :pred w} w))
+         non-det-clauses)))
+
+(defn get-non-det-ids
+  [op]
+  (mapcat (fn [clause]
+         (match clause
+           {:tag :any :ids ids} ids))
+       (get-non-det-clauses op)))
 
 (defn get-max-size [] (:max-size @db))
 
@@ -168,24 +181,49 @@
 (defn elem->bools
   [elem]
   (let [TS (get-type elem)
-        TIR (typestring->ir TS)
         vars (first (s/select [VARIABLES] (:ir @db)))
         relevant-vars (filter #(= (get-type %) (str "POW(" TS ")")) vars)]
     (map (fn [var-id] (create-boolname var-id elem)) relevant-vars)))
-
-;; FIXME
-(defn op->bindings
-  [op]
-  (match op
-    (_ :guard #(= (:name %) :nr_ready)) []
-    (_ :guard #(= (:name %) :new)) [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]]
-    (_ :guard #(= (:name %) :ready)) [[[:rr :PID1]] [[:rr :PID2]] [[:rr :PID3]]]
-    (_ :guard #(= (:name %) :del)) [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]]
-    (_ :guard #(= (:name %) :swap)) [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]]))
 
 (defn pick-bool-var
   [formulas el-id]
   (filter (fn [formula] (involves? formula (elem->bools el-id))) formulas))
 
-(defn get-op-combinations [op-id]
-    (op->bindings {:name op-id}))
+(defn guard?
+  [ir id]
+  (match ir
+         {:tag :not :pred {:tag :member :elem (_ :guard #(= % id)) :set _}} true
+         {:tag :member :elem (_ :guard #(= % id)) :set _} true
+         _ false))
+
+(defn find-guards
+  [op id]
+   (s/select [(s/codewalker #(guard? % id))] op))
+
+(defn get-param-elems [op id]
+  (let [vars (s/select [VARIABLES s/ALL] (:ir @db))
+        guards (apply band (find-guards op id))]
+    (interpret-animator-result
+     (get-possible-var-states
+      (:ss @db)
+      id
+      vars
+      (band guards (get-props-and-invars-as-pred))))))
+
+(defn get-operation
+  [name]
+  (first (s/select [(OPERATION name)] (:ir @db))))
+
+(defn combine
+  [op bindings id]
+  (let [elems (get-param-elems op id)]
+    (if (empty? bindings)
+      (mapv (fn [elem] [[id elem]]) elems)
+      (for [b bindings
+            e elems]
+        (conj b [id e])))))
+
+(defn op->bindings
+  [op]
+  (let [ids (concat (:args op) (get-non-det-ids op))]
+    (reduce (partial combine op) [] ids)))
