@@ -35,6 +35,7 @@
 (def get-statespace
   (memoize (fn [ir] (state-space! (ir->ast ir)))))
 
+
 (defn- get-set-elems
   [set-ir]
   (let [ss (:ss @db)]
@@ -49,6 +50,10 @@
         formula-ast (ir->ast formula)
         ee (ClassicalB. formula-ast FormulaExpand/TRUNCATE "")]
     (.getType (.typeCheck ss ee))))
+
+(defn predicate?
+  [ir]
+  (= "predicate" (get-type ir)))
 
 (defn- get-possible-var-states
   [ss target-vars other-vars predicate]
@@ -153,9 +158,25 @@
   [id]
   (seq (s/select [VARIABLES s/ALL #(= % id)] (:ir @db))))
 
+
+(defn finite-type?
+  [expr]
+  (if (carrier? expr)
+    true
+    (let [TS (get-type expr)
+          TIR (typestring->ir TS)]
+      (match TIR
+        {:tag :power-set :set (_ :guard finite-type?)} true
+        {:tag :integer-set} false
+        _ false))))
+
 (defn finite?
   [expr]
-  (get-type expr))
+  (match expr
+    {:tag :interval :from n :to m} (< (- m n) (:max-size @db))
+    {:tag :cardinality} true
+    _ (finite-type? expr)))
+
 
 (defn unrollable-var?
   [var-id]
@@ -168,9 +189,13 @@
     (match TIR
            {:tag :power-set :set S} (get-set-elems S))))
 
+(defn finite-var?
+  [var-id]
+  (and (variable? var-id) (finite? var-id)))
+
 (defn unroll-variable
   [var-id]
-  (if (and (variable? var-id) (finite? var-id))
+  (if (finite-var? var-id)
     (map (partial create-boolname var-id) (varid->elems var-id))
     (list var-id)))
 
@@ -227,3 +252,6 @@
   [op]
   (let [ids (concat (:args op) (get-non-det-ids op))]
     (reduce (partial combine op) [] ids)))
+
+(defn get-sets []
+  (s/select [(CLAUSE :sets) :values s/ALL] (:ir @db)))

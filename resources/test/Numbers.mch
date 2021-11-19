@@ -1,0 +1,10 @@
+MACHINE Numbers
+VARIABLES x
+INVARIANT x:INTEGER & x>0 & x<=10
+INITIALISATION x:=0
+OPERATIONS
+  inc =
+       SELECT x<10
+       THEN x:=x+1
+  END
+END

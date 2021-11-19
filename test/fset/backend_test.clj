@@ -92,8 +92,3 @@
   (is (b/set-element? :B1))
   (is (b/set-element? :B2))
   (is (not (b/set-element? :active))))
-
-(b/get-param-elems (b/get-operation :new) :pp)
-
-;; (clojure.pprint/pprint (band {:tag :and, :preds '({:tag :member, :elem :pp, :set :PID} {:tag :member, :elem :pp, :set :active} {:tag :member, :elem :pp, :set {:tag :union, :sets (:ready :waiting)}})}
-;;                              (b/get-invars-as-pred)))

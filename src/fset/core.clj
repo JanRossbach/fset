@@ -31,8 +31,9 @@
        {:tag :cardinality :set s} (list {:tag :add :nums (map (fn [p] (IF (=TRUE (BOOL p)) 1 0)) (T s))})
        {:tag :sub :nums ns} (T {:tag :difference :sets ns})
        (n :guard number?) (list n)
+       {:tag :integer-set} e
        (variable :guard b/variable?) (map =TRUE (b/unroll-variable variable))
-       _ e))
+       _ (list e)))
    Set))
 
 
@@ -60,12 +61,13 @@
        {:tag :member :elem (_ :guard b/set-element?) :set (_ :guard type?)} '()
        {:tag :member :elem (el-id :guard b/set-element?) :set v} (b/pick-bool-var (set->bitvector v) el-id)
        {:tag :member :elem (v :guard b/unrollable-var?) :set (_ :guard type?)} (list (BOOLDEFS (b/unroll-variable v)))
+       {:tag :member} (list e)
 
        ;; Numbers
        {:tag :less-equals :nums ns} (list {:tag :less-equals :nums (mapcat T ns)})
 
        (SET :guard b/finite?) (set->bitvector SET)
-       _ e))
+       _ (list e)))
    pred))
 
 (defn- unroll-sub
@@ -127,6 +129,7 @@
          {:tag :invariants :values v} {:tag :invariants :values (mapcat unroll-predicate v)}
          {:tag :init :values v} {:tag :init :values (map unroll-sub v)}
          {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation v)}
+         {:tag :sets :values _} {:tag :sets :values (b/get-sets)}
          _ c))
 
 (defn- simplify-formula
@@ -145,7 +148,7 @@
     {:tag :or :preds (ps :guard (fn [ps] (some #(= % FALSE) ps)))} {:tag :or :preds (filter #(not= % FALSE) ps)}
     {:tag :equals :left {:tag :pred->bool :pred p} :right :TRUE} p
     {:tag :assignment :id-vals ([a {:tag :pred->bool :pred {:tag :equals :left b :right :TRUE}}] :seq)} (if (= a b) s/NONE nil)
-    {:tag :pred->bool :pred {:tag :add :nums n}} {:tag :add :nums n}
+    {:tag :pred->bool :pred (nonpred :guard #(not (b/predicate? %)))} nonpred
     {:tag :parallel-sub :subs (substitutions :guard #(= (count %) 1))} (first substitutions)
     {:tag :parallel-sub :subs (_ :guard empty?)} s/NONE
     {:tag :select :clauses ([outer-guard {:tag :select :clauses ([inner-guard & r] :seq)}] :seq)} {:tag :select :clauses (cons (AND outer-guard inner-guard) r)}
