@@ -21,3 +21,8 @@
 (deftest valid-B-machine-test
     (is (string? (ir->b (boolencode scheduler-ir))) "The IR can be translated into a B machine.")
     (is (= scheduler-transformed-ir (boolencode scheduler-ir)) "The scheduler is correctly translated."))
+
+(def numbers-ir (b->ir (slurp "resources/test/Numbers.mch")))
+
+(deftest numbers-test
+  (is (= numbers-ir (boolencode numbers-ir)) "A Machine without any Sets should not change in any Way."))
