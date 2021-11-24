@@ -1,5 +1,6 @@
 (ns fset.backend
   (:require
+   [clojure.core.matrix :as m]
    [clojure.core.match :refer [match]]
    [com.rpl.specter :as s]
    [lisb.core :refer [eval-ir-formula]]
@@ -30,7 +31,7 @@
 
 (defn interpret-animator-result
   [result]
-  (sort (map keyword result)))
+  (sort (map (fn [e] (if (seq e) (keyword (apply str e)) (keyword e))) result)))
 
 (def get-statespace
   (memoize (fn [ir] (state-space! (ir->ast ir)))))
@@ -43,6 +44,14 @@
      (eval-ir-formula
       ss
       (bcomprehension-set [:x] (bmember? :x set-ir))))))
+
+(defn- get-relation-elems
+  [rdomain rrange]
+  (let [ss (:ss @db)]
+    (interpret-animator-result (eval-ir-formula
+              ss
+              (bcomprehension-set [:x :y] (band (bmember? :x rdomain)
+                                                (bmember? :y rrange)))))))
 
 (defn get-type
   [formula]
@@ -101,7 +110,7 @@
   [size {:keys [id]}]
   {:tag :enumerated-set
    :id id
-   :elems (map (fn [i] (create-boolname id i)) (range 1 (inc size)))})
+   :elems (map (fn [i] (create-boolname (first (name id)) i)) (range 1 (inc size)))})
 
 (defn- replace-def-sets-with-enum-sets
   [size ir]
@@ -136,7 +145,7 @@
 
 (defn setup-backend ;; Call this before testing the backend isolated without an actual translation
   [ir]
-  (let [nir (replace-def-sets-with-enum-sets 3 ir)]
+  (let [nir (replace-def-sets-with-enum-sets 2 ir)]
     (reset! db (assoc
                 {}
                 :max-size 5
@@ -158,7 +167,6 @@
   [id]
   (seq (s/select [VARIABLES s/ALL #(= % id)] (:ir @db))))
 
-
 (defn finite-type?
   [expr]
   (if (carrier? expr)
@@ -168,6 +176,7 @@
       (match TIR
         {:tag :power-set :set (_ :guard finite-type?)} true
         {:tag :integer-set} false
+        {:tag :relation :sets ([A B] :seq)} (and (carrier? A) (carrier? B))
         _ false))))
 
 (defn finite?
@@ -187,7 +196,9 @@
   (let [TS (get-type var-id)
         TIR (typestring->ir TS)]
     (match TIR
-           {:tag :power-set :set S} (get-set-elems S))))
+           {:tag :power-set :set S} (get-set-elems S)
+           {:tag :relation :sets ([A B] :seq)} (get-relation-elems A B)
+           )))
 
 (defn finite-var?
   [var-id]
@@ -221,13 +232,34 @@
          {:tag :member :elem (_ :guard #(= % id)) :set _} true
          _ false))
 
+(defn bv->shape
+  [bv]
+  [2 2])
+
+(defn invert-bitvector
+  [bv]
+  (let [shape (bv->shape bv)]
+    (flatten (m/transpose (m/reshape (m/matrix bv) shape)))))
+
+(defn setexpr?
+  [expr]
+  (let [T (get-type expr)]
+    (cond
+      (= (:tag expr) :cardinality) true
+      (= T "INTEGER") false
+      :else true)))
+
+(defn image
+  [bv s]
+  bv)
+
 (defn find-guards
   [op id]
    (s/select [(s/codewalker #(guard? % id))] op))
 
-(defn get-param-elems [op id]
+(defn get-param-elems [ir id]
   (let [vars (s/select [VARIABLES s/ALL] (:ir @db))
-        guards (apply band (find-guards op id))]
+        guards (apply band (find-guards ir id))]
     (interpret-animator-result
      (get-possible-var-states
       (:ss @db)

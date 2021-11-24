@@ -1,6 +1,7 @@
 (ns fset.backend-test
   (:require
    [clojure.test :refer [deftest testing is are]]
+   [lisb.translation.lisb2ir :refer :all]
    [lisb.translation.util :refer [b->ir]]
    [lisb.translation.lisb2ir :refer [b= bor]]
    [fset.backend :as b]))
@@ -92,3 +93,9 @@
   (is (b/set-element? :B1))
   (is (b/set-element? :B2))
   (is (not (b/set-element? :active))))
+
+(def banking-ir (b->ir (slurp "resources/test/Banking.mch")))
+
+(b/setup-backend banking-ir)
+
+(b/get-param-elems {:tag :member :elem :x :set :ACCOUNTS} :x)
