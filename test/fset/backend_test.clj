@@ -80,6 +80,10 @@
     (is (= [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]] (b/op->bindings (b/get-operation :del))))
     (is (= [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]] (b/op->bindings (b/get-operation :swap))))))
 
+(deftest elem->bools
+  (b/setup-backend scheduler-ir)
+  (is (= '(:activePID1 :readyPID1 :waitingPID1) (b/elem->bools :PID1))))
+
 ;; Tests on the Test machine
 
 (def test-ir (b->ir (slurp "resources/test/Test.mch")))
@@ -94,8 +98,35 @@
   (is (b/set-element? :B2))
   (is (not (b/set-element? :active))))
 
+;; Tests on the Banking machine. Mostly for relations
+
 (def banking-ir (b->ir (slurp "resources/test/Banking.mch")))
 
-(b/setup-backend banking-ir)
+(def rel-bitvector '({:tag :equals, :left :account_accessP1A1, :right :TRUE}
+                     {:tag :equals, :left :account_accessP2A1, :right :TRUE}
+                     {:tag :equals, :left :account_accessP1A2, :right :TRUE}
+                     {:tag :equals, :left :account_accessP2A2, :right :TRUE}))
 
-(b/get-param-elems {:tag :member :elem :x :set :ACCOUNTS} :x)
+(def im-A1 '({:tag :equals, :left :account_accessP1A1, :right :TRUE}
+             {:tag :equals, :left :account_accessP2A1, :right :TRUE}))
+
+(def im-A2 '({:tag :equals, :left :account_accessP1A2, :right :TRUE}
+             {:tag :equals, :left :account_accessP2A2, :right :TRUE}))
+
+(def im-P1 '({:tag :equals, :left :account_accessP1A1, :right :TRUE}
+             {:tag :equals, :left :account_accessP1A2, :right :TRUE}))
+
+(def im-P2 '({:tag :equals, :left :account_accessP2A1, :right :TRUE}
+             {:tag :equals, :left :account_accessP2A2, :right :TRUE}))
+
+(deftest get-relation-elems-from-elem-test
+  (b/setup-backend banking-ir)
+  (is (= '([:P1 :A1] [:P1 :A2] [:P2 :A1] [:P2 :A2]) (b/get-all-elems-from-elem [:P1 :A1]))))
+
+(deftest image-test-banking
+  (b/setup-backend banking-ir)
+  (is (= im-A1 (b/image rel-bitvector #{:A1})))
+  (is (= im-A2 (b/image rel-bitvector #{:A2})))
+  (is (= im-P1 (b/image rel-bitvector #{:P1})))
+  (is (= im-P2 (b/image rel-bitvector #{:P2})))
+  (is (= rel-bitvector (b/image rel-bitvector #{:A1 :A2}))))

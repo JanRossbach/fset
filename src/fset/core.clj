@@ -33,9 +33,7 @@
        {:tag :difference :sets ([A B] :seq)} (map (fn [a b] (AND a (NOT b))) (T A) (T B))
        {:tag :unite-sets :set-of-sets ss} (apply map OR (map T ss))
        {:tag :intersect-sets :set-of-sets ss} (apply map AND (map T ss))
-       {:tag :cardinality :set s} (list {:tag :add :nums (map (fn [p] (IF (=TRUE (BOOL p)) 1 0)) (T s))})
        {:tag :sub :nums ns} (T {:tag :difference :sets ns})
-       (n :guard number?) (list n)
        {:tag :integer-set} (list e)
 
        {:tag :inverse :rel r} (b/invert-bitvector (T r))
@@ -45,6 +43,18 @@
        _ (list e)))
    Set))
 
+(defn intexpr->intexpr
+  [intexpr]
+  (match intexpr
+    {:tag :cardinality :set s} {:tag :add :nums (map (fn [p] (IF (=TRUE (BOOL p)) 1 0)) (setexpr->bitvector s))}
+    _ intexpr))
+
+(defn- unroll-expression
+  [expr]
+  (match expr
+         (e :guard b/setexpr?) (setexpr->bitvector e)
+         (e :guard b/intexpr?) (intexpr->intexpr e)))
+
 (defn- unroll-predicate
   [pred]
   ((fn T [e]
@@ -52,7 +62,7 @@
          ;; equalsity
        {:tag :equals :left l :right #{}} (apply AND (map NOT (T l)))
        {:tag :equals :left #{} :right r} (apply AND (map NOT (T r)))
-       {:tag :equals :left l :right r}  (apply AND (map <=> (T l) (T r)))
+       {:tag :equals :left (l :guard b/setexpr?) :right (r :guard b/setexpr?)}  (apply AND (map <=> (T l) (T r)))
        {:tag :not-equals :left l :right r} (NOT (T (EQUALS l r)))
        {:tag :subset :sets ([(s :guard b/unrollable-var?) (_ :guard type?)] :seq)} (BOOLDEFS (b/unroll-variable s))
        {:tag :subset :sets ([s S] :seq)} (apply AND (map (fn [a b] (=> a b)) (T s) (T S)))
@@ -66,8 +76,8 @@
        {:tag :implication :preds ([A B] :seq)} (=> (T A) (T B))
 
        ;; Quantifiers
-       {:tag :for-all :ids ([id] :seq) :implication {:tag :implication :preds ([P Q] :seq)}} (apply AND (map (fn [e] (=> (apply AND (T (replace-param P [id e])))
-                                                                                                                        (apply AND (T (replace-param Q [id e])))))
+       {:tag :for-all :ids ([id] :seq) :implication {:tag :implication :preds ([P Q] :seq)}} (apply AND (map (fn [e] (=> (T (replace-param P [id e]))
+                                                                                                                         (T (replace-param Q [id e]))))
                                                                                                              (b/get-param-elems P id)))
 
        ;; Member
@@ -77,11 +87,21 @@
        {:tag :member} e
 
        ;; Numbers
-       {:tag :less-equals :nums ns} {:tag :less-equals :nums (mapcat (fn [n] (if (b/setexpr? n) (setexpr->bitvector n) (list n))) ns)}
-
-       (SET-EXPR :guard b/finite?) (setexpr->bitvector SET-EXPR)
-       _ e))
+       {:tag :equals :left l :right r} {:tag :equals :left (intexpr->intexpr l) :right (intexpr->intexpr r)}
+       {:tag :less-equals :nums ns} {:tag :less-equals :nums (map intexpr->intexpr ns)}
+       {:tag :less :nums ns} {:tag :less :nums (map intexpr->intexpr ns)}
+       {:tag :greater :nums ns} {:tag :greater :nums (map intexpr->intexpr ns)}
+       {:tag :greater-equals :nums ns} {:tag :greater-equals :nums (map intexpr->intexpr ns)}
+       expr (unroll-expression expr)))
    pred))
+
+(defn unroll-id-val
+  [[id val]]
+  (if (b/unrollable-var? id)
+    (map (fn [v p] (ASSIGN v (BOOL p)))
+         (b/unroll-variable id)
+         (unroll-expression val))
+    (list (ASSIGN id (unroll-expression val)))))
 
 (defn- unroll-sub
   [sub]
@@ -89,12 +109,9 @@
      (match e
        {:tag :skip} (list {:tag :skip})
        {:tag :parallel-sub :subs substitutions} {:tag :parallel-sub :subs (map T substitutions)}
-       {:tag :assignment :id-vals id-vals} {:tag :parallel-sub :subs (mapcat (fn [id-val] (map (fn [v p] (ASSIGN v (BOOL p)))
-                                                                                              (b/unroll-variable (first id-val))
-                                                                                              (setexpr->bitvector (second id-val))))
-                                                                             (partition 2 id-vals))}
+       {:tag :assignment :id-vals id-vals} {:tag :parallel-sub :subs (mapcat unroll-id-val (partition 2 id-vals))}
        {:tag :if-sub :cond condition :then then :else else} {:tag :if-sub :cond (unroll-predicate condition) :then (T then) :else (T else)}
-       {:tag :select :clauses clauses} {:tag :select :clauses (mapcat (fn [[P S]] [(unroll-predicate P) (unroll-sub S)]) (partition 2 clauses))}
+       {:tag :select :clauses clauses} {:tag :select :clauses (mapcat (fn [[P S]] [(unroll-predicate P) (T S)]) (partition 2 clauses))}
        {:tag :any :ids _ :pred _ :subs then} {:tag :parallel-sub :subs (map T then)}
        _ e))
    sub))

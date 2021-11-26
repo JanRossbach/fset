@@ -11,5 +11,20 @@ OPERATIONS
 	ANY p
 	WHERE p : PERSONS & p/:clients
 	THEN clients := clients \/ {p}
+    END;
+    rem_client =
+	ANY p
+	WHERE p : PERSONS & p : clients & card(account_access[{p}])=0
+	THEN clients := clients - {p}
+    END;
+    connect_account =
+	ANY c,a
+	WHERE c : clients & a : ACCOUNTS & card(account_access~[{a}]) = 0
+	THEN account_access := account_access \/ {c|->a}
+    END;
+    disconnect_account =
+	ANY c,a
+	WHERE c : clients & a : ACCOUNTS
+	THEN account_access := account_access - {c|->a}
     END
 END

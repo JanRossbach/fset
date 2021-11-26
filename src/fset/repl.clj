@@ -12,8 +12,10 @@
 
 (def banking-ir (b->ir (slurp "resources/test/Banking.mch")))
 
+(pprint (fset/boolencode scheduler-ir))
+
 (pprint banking-ir)
 
 (pprint (fset/boolencode banking-ir))
 
-(ir->b (fset/boolencode banking-ir))
+(spit "resources/machines/b/target/banking_auto.mch" (ir->b (fset/boolencode banking-ir)))

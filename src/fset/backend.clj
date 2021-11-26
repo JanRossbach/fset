@@ -31,7 +31,9 @@
 
 (defn interpret-animator-result
   [result]
-  (sort (map (fn [e] (if (seq e) (keyword (apply str e)) (keyword e))) result)))
+  (match (first result)
+    (_ :guard string?) (sort (map keyword result))
+    (_ :guard vector?) (sort-by first (map (fn [v] (map keyword v)) result))))
 
 (def get-statespace
   (memoize (fn [ir] (state-space! (ir->ast ir)))))
@@ -53,12 +55,13 @@
               (bcomprehension-set [:x :y] (band (bmember? :x rdomain)
                                                 (bmember? :y rrange)))))))
 
-(defn get-type
-  [formula]
-  (let [ss (:ss @db)
-        formula-ast (ir->ast formula)
-        ee (ClassicalB. formula-ast FormulaExpand/TRUNCATE "")]
-    (.getType (.typeCheck ss ee))))
+(def get-type
+  (memoize
+   (fn [formula]
+     (let [ss (:ss @db)
+           formula-ast (ir->ast formula)
+           ee (ClassicalB. formula-ast FormulaExpand/TRUNCATE "")]
+       (.getType (.typeCheck ss ee))))))
 
 (defn predicate?
   [ir]
@@ -212,14 +215,21 @@
 
 (defn get-all-elems-from-elem
   [elem-id]
-  (s/select [SETS (fn [m] (some #(= % elem-id) (:elems m))) :elems s/ALL] (:ir @db)))
+  (let [elem-type (typestring->ir (get-type elem-id))]
+    (get-set-elems elem-type)))
 
 (defn elem->bools
   [elem]
-  (let [TS (get-type elem)
-        vars (first (s/select [VARIABLES] (:ir @db)))
-        relevant-vars (filter #(= (get-type %) (str "POW(" TS ")")) vars)]
-    (map (fn [var-id] (create-boolname var-id elem)) relevant-vars)))
+  (let [elem-type (typestring->ir (get-type elem))
+        vars (first (s/select [VARIABLES] (:ir @db)))]
+    (mapcat
+     (fn [v]
+       (match (typestring->ir (get-type v))
+         {:tag :power-set :set (_ :guard #(= % elem-type))} (list (create-boolname v elem))
+         {:tag :relation :sets ([(_ :guard #(= % elem-type)) B] :seq)} (map (fn [el2] (create-boolname v elem el2)) (get-set-elems B))
+         {:tag :relation :sets ([A (_ :guard #(= % elem-type))] :seq)} (map (fn [el1] (create-boolname v el1 elem)) (get-set-elems A))
+         _ '()))
+     vars)))
 
 (defn pick-bool-var
   [formulas el-id]
@@ -245,13 +255,19 @@
   [expr]
   (let [T (get-type expr)]
     (cond
-      (= (:tag expr) :cardinality) true
       (= T "INTEGER") false
       :else true)))
 
+(defn intexpr?
+  [expr]
+  (= "INTEGER" (get-type expr)))
+
 (defn image
   [bv s]
-  bv)
+  (let [ss (:ss @db)
+        elems (interpret-animator-result (eval-ir-formula ss (bcomprehension-set [:x] (bmember? :x s))))
+        bools (mapcat elem->bools elems)]
+    (filter (fn [ir] (involves? ir bools)) bv)))
 
 (defn find-guards
   [op id]
