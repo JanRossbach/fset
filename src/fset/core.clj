@@ -1,14 +1,18 @@
 (ns fset.core
   (:require
-   [fset.dsl :refer [AND OR =TRUE <=> NOT TRUE FALSE EQUALS => BOOL BOOLDEFS IF ASSIGN]]
+   [fset.dsl :refer [MACHINE AND OR =TRUE <=> NOT TRUE FALSE EQUALS => BOOL BOOLDEFS IF ASSIGN]]
    [clojure.core.match :refer [match]]
    [com.rpl.specter :as s]
    [fset.backend :as b]))
 
 
 (defn- replace-param
-  [body [parameter element]]
-  (s/setval [(s/walker #(= % parameter))] element body))
+  [ir [parameter element]]
+  (s/setval [(s/walker #(= % parameter))] element ir))
+
+(defn- replace-params
+  [ir id-vals]
+  (reduce replace-param ir id-vals))
 
 (defn- type?
   [expr]
@@ -23,11 +27,13 @@
 
 
 (defn setexpr->bitvector
-  [Set]
+  [set-expr]
   ((fn T [e]
      (match e
        #{} (repeat (b/get-max-size) FALSE)
-       (singleton-set :guard #(and (set? %) (= 1 (count %)))) (let [x (first singleton-set)] (map (fn [e] (if (= e x) TRUE FALSE)) (b/get-all-elems-from-elem x)))
+       (enumeration-set :guard set?) (map (fn [e] (if (contains? enumeration-set e) TRUE FALSE)) (b/get-all-elems-from-elem (first enumeration-set)))
+       {:tag :comprehension-set :ids ids :preds preds} '() ;; FIXMEEEE set-comprehension
+       ;; FIXME Lambda expressions
        {:tag :union :sets ([A B] :seq)} (map (fn [a b] (OR a b)) (T A) (T B))
        {:tag :intersection :sets ([A B] :seq)} (map (fn [a b] (AND a b)) (T A) (T B))
        {:tag :difference :sets ([A B] :seq)} (map (fn [a b] (AND a (NOT b))) (T A) (T B))
@@ -41,7 +47,7 @@
 
        (variable :guard b/variable?) (map =TRUE (b/unroll-variable variable))
        _ (list e)))
-   Set))
+   set-expr))
 
 (defn intexpr->intexpr
   [intexpr]
@@ -52,8 +58,9 @@
 (defn- unroll-expression
   [expr]
   (match expr
-         (e :guard b/setexpr?) (setexpr->bitvector e)
-         (e :guard b/intexpr?) (intexpr->intexpr e)))
+         (_ :guard b/setexpr?) (setexpr->bitvector expr)
+         (_ :guard b/intexpr?) (intexpr->intexpr expr)
+         _ expr))
 
 (defn- unroll-predicate
   [pred]
@@ -64,7 +71,7 @@
        {:tag :equals :left #{} :right r} (apply AND (map NOT (T r)))
        {:tag :equals :left (l :guard b/setexpr?) :right (r :guard b/setexpr?)}  (apply AND (map <=> (T l) (T r)))
        {:tag :not-equals :left l :right r} (NOT (T (EQUALS l r)))
-       {:tag :subset :sets ([(s :guard b/unrollable-var?) (_ :guard type?)] :seq)} (BOOLDEFS (b/unroll-variable s))
+       {:tag :subset :sets ([(_ :guard b/unrollable-var?) (_ :guard type?)] :seq)} {} ;; An empty map just means delete this thing
        {:tag :subset :sets ([s S] :seq)} (apply AND (map (fn [a b] (=> a b)) (T s) (T S)))
        {:tag :subset-strict :subset s :set S} (let [Ts (T s) TS (T S)] (apply AND (cons (apply OR (map (fn [a b] (AND a (NOT b))) Ts TS))
                                                                                         (map (fn [a b] (=> a b)) Ts TS))))
@@ -76,14 +83,16 @@
        {:tag :implication :preds ([A B] :seq)} (=> (T A) (T B))
 
        ;; Quantifiers
-       {:tag :for-all :ids ([id] :seq) :implication {:tag :implication :preds ([P Q] :seq)}} (apply AND (map (fn [e] (=> (T (replace-param P [id e]))
-                                                                                                                         (T (replace-param Q [id e]))))
-                                                                                                             (b/get-param-elems P id)))
+       {:tag :for-all :ids ids :implication {:tag :implication :preds ([P Q] :seq)}} (apply AND (apply map (fn [& es]
+                                                                                                             (=> (T (replace-params P (map (fn [id e] [id e]) ids es)))
+                                                                                                                 (T (replace-params Q (map (fn [id e] [id e]) ids es)))))
+                                                                                                       (map (partial b/get-param-elems P) ids)))
 
+       ;; FIXMEE Exists
        ;; Member
        {:tag :member :elem (_ :guard b/set-element?) :set (_ :guard type?)} TRUE
        {:tag :member :elem (el-id :guard b/set-element?) :set v} (first (b/pick-bool-var (setexpr->bitvector v) el-id))
-       {:tag :member :elem (v :guard b/unrollable-var?) :set (_ :guard type?)} (BOOLDEFS (b/unroll-variable v))
+       {:tag :member :elem (_ :guard b/unrollable-var?) :set (_ :guard type?)} {}
        {:tag :member} e
 
        ;; Numbers
@@ -155,13 +164,11 @@
 (defn- unroll-clause
   [c]
   (match c
-         {:tag :variables :values v} {:tag :variables :values (mapcat b/unroll-variable v)}
-         {:tag :constants :values v} {:tag :constants :values (mapcat b/unroll-variable v)}
-         {:tag :invariants :values v} {:tag :invariants :values (map unroll-predicate v)}
-         {:tag :init :values v} {:tag :init :values (map unroll-sub v)}
-         {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation v)}
-         {:tag :sets :values _} {:tag :sets :values (b/get-sets)}
-         _ c))
+    {:tag :variables :values v} {:tag :variables :values (mapcat b/unroll-variable v)}
+    {:tag :invariants :values v} {:tag :invariants :values (filter #(not= % {}) (cons (BOOLDEFS (b/get-all-bools)) (map unroll-predicate v)))}
+    {:tag :init :values v} {:tag :init :values (map unroll-sub v)}
+    {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation v)}
+    _ c))
 
 (defn- simplify-formula
   [formula]
@@ -198,9 +205,13 @@
         next-ir
         (recur next-ir)))))
 
+(defn unroll-machine
+  [{:keys [name clauses]}]
+  (MACHINE name (map unroll-clause clauses)))
+
 (defn boolencode
   [ir]
-  (b/setup-backend ir)
-  (simplify-all {:tag :machine
-                 :name (:name ir)
-                 :clauses (map unroll-clause (:clauses ir))}))
+  (->> ir
+       (b/setup-backend)
+       (unroll-machine)
+       (simplify-all)))

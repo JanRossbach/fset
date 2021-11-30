@@ -13,15 +13,6 @@ lein repl
 - In order to translate a B machine, load the machines IR using lisb and run the boolencode function from the core namespace
 - Examples can be found in repl.clj and in the core tests
 
-## Features
-- [x] Enumerated Sets
-- [x] Finite Variables
-- [ ] Deferred Sets
-- [ ] Infinite Variables
-- [ ] Relations
-- [x] Unrolling Operations
-- [x] Eliminate Non-determanism
-
 ## License
 
 Copyright © 2021

@@ -10,12 +10,14 @@
 
 (spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (fset/boolencode scheduler-ir))) ;; Write the translated IR to another file
 
-(def banking-ir (b->ir (slurp "resources/test/Banking.mch")))
+(spit "resources/test/scheduler-ir.edn" (fset/boolencode scheduler-ir))
 
-(pprint (fset/boolencode scheduler-ir))
+(def test-ir (b->ir (slurp "resources/test/test.mch")))
 
-(pprint banking-ir)
+(ir->b (fset/boolencode scheduler-ir))
 
-(pprint (fset/boolencode banking-ir))
+(pprint test-ir)
 
-(spit "resources/machines/b/target/banking_auto.mch" (ir->b (fset/boolencode banking-ir)))
+(pprint (fset/boolencode test-ir))
+
+(spit "resources/machines/b/target/banking_auto.mch" (ir->b (fset/boolencode test-ir)))

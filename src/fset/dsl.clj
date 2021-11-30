@@ -1,6 +1,6 @@
 (ns fset.dsl
   (:require
-   [lisb.translation.lisb2ir :refer [b= bpred->bool band bor bnot bequivalence bimplication bsubset? bmember? bif-expr bassign]]))
+   [lisb.translation.lisb2ir :refer [b= bpred->bool band bor bnot bequivalence bimplication bsubset? bmember? bif-expr bassign bmachine]]))
 
 (def TRUE
   (b= :TRUE :TRUE))
@@ -46,10 +46,17 @@
   (bmember? el :BOOL))
 
 (defn BOOLDEFS [els]
-  (apply AND (map BOOLDEF els)))
+  (if (seq els)
+    (apply AND (map BOOLDEF els))
+    {}))
 
 (defn IF [pred then else]
   (bif-expr pred then else))
 
 (defn ASSIGN [id val]
   (bassign id val))
+
+(defn MACHINE [name clauses]
+  {:tag :machine
+   :name name
+   :clauses clauses})

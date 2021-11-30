@@ -115,7 +115,7 @@
    :id id
    :elems (map (fn [i] (create-boolname (first (name id)) i)) (range 1 (inc size)))})
 
-(defn- replace-def-sets-with-enum-sets
+(defn replace-def-sets-with-enum-sets
   [size ir]
   (s/transform [SETS (TAG :deferred-set)] (partial deff-set->enum-set size) ir))
 
@@ -148,12 +148,13 @@
 
 (defn setup-backend ;; Call this before testing the backend isolated without an actual translation
   [ir]
-  (let [nir (replace-def-sets-with-enum-sets 2 ir)]
+  (let [new-ir (replace-def-sets-with-enum-sets 2 ir)]
     (reset! db (assoc
                 {}
                 :max-size 5
-                :ir nir
-                :ss (get-statespace nir)))))
+                :ir new-ir
+                :ss (get-statespace new-ir)))
+    new-ir))
 
 (defn carrier?
   [id]
@@ -169,6 +170,7 @@
 (defn variable?
   [id]
   (seq (s/select [VARIABLES s/ALL #(= % id)] (:ir @db))))
+
 
 (defn finite-type?
   [expr]
@@ -212,6 +214,11 @@
   (if (finite-var? var-id)
     (map (partial create-boolname var-id) (varid->elems var-id))
     (list var-id)))
+
+(defn get-all-bools
+  []
+  (let [vars (s/select [VARIABLES s/ALL] (:ir @db))]
+    (filter #(not (variable? %)) (mapcat unroll-variable vars))))
 
 (defn get-all-elems-from-elem
   [elem-id]
