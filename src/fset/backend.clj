@@ -11,6 +11,7 @@
    de.prob.animator.domainobjects.ClassicalB
    de.prob.animator.domainobjects.FormulaExpand))
 
+
 ;; SETUP
 
 (defn- TAG [t] (s/path #(= (:tag %) t)))
@@ -27,34 +28,6 @@
 
 (def db (atom {}))
 
-;; HELPERS
-
-(defn interpret-animator-result
-  [result]
-  (match (first result)
-    (_ :guard string?) (sort (map keyword result))
-    (_ :guard vector?) (sort-by first (map (fn [v] (map keyword v)) result))))
-
-(def get-statespace
-  (memoize (fn [ir] (state-space! (ir->ast ir)))))
-
-
-(defn- get-set-elems
-  [set-ir]
-  (let [ss (:ss @db)]
-    (interpret-animator-result
-     (eval-ir-formula
-      ss
-      (bcomprehension-set [:x] (bmember? :x set-ir))))))
-
-(defn- get-relation-elems
-  [rdomain rrange]
-  (let [ss (:ss @db)]
-    (interpret-animator-result (eval-ir-formula
-              ss
-              (bcomprehension-set [:x :y] (band (bmember? :x rdomain)
-                                                (bmember? :y rrange)))))))
-
 (def get-type
   (memoize
    (fn [formula]
@@ -63,26 +36,54 @@
            ee (ClassicalB. formula-ast FormulaExpand/TRUNCATE "")]
        (.getType (.typeCheck ss ee))))))
 
-(defn predicate?
-  [ir]
-  (= "predicate" (get-type ir)))
-
-(defn- get-possible-var-states
-  [ss target-vars other-vars predicate]
-  (let [res (eval-ir-formula ss
-                             (bcomprehension-set target-vars
-                                                 (bexists other-vars predicate)))]
-    (if (= res :timeout)
-      (throw (ex-info "Call to the API timed out." {:target-var target-vars
-                                                    :other-vars other-vars
-                                                    :predicate predicate}))
-      res)))
+(def get-statespace
+  (memoize (fn [ir] (state-space! (ir->ast ir)))))
 
 (defn- typestring->ir
   [type-str]
   (let [query-str (str "MACHINE scheduler\nCONSTANTS x\nPROPERTIES x:" type-str "\nEND")
         query-ir (b->ir query-str)]
     (first (s/select [(CLAUSE :properties) :values s/FIRST :set] query-ir))))
+
+(def get-type-ir (memoize (comp typestring->ir get-type)))
+
+(defn interpret-animator-result
+  [result]
+  (if (= result :timeout)
+    (throw (ex-info "Animator call timed out!" {}))
+    (match (first result)
+      (_ :guard string?) (sort (map keyword result))
+      (_ :guard vector?) (sort-by first (map (fn [v] (mapv keyword v)) result))
+      (_ :guard set?) (map interpret-animator-result result)
+      nil '())))
+
+(defn comprehend
+  [ids pred]
+  (interpret-animator-result
+   (eval-ir-formula
+    (:ss @db)
+    (bcomprehension-set ids pred))))
+
+(defn get-set-elems
+  [set-ir]
+  (comprehend [:x] {:tag :member :elem :x :set set-ir}))
+
+(defn get-relation-elems
+  [rdomain rrange]
+  (comprehend [:x :y] (band (bmember? :x rdomain)
+                            (bmember? :y rrange))))
+
+(def get-type-elems (comp get-set-elems get-type-ir))
+
+(defn get-sub-type-elems
+  [expr]
+  (match (get-type-ir expr)
+         {:tag :power-set :set s} (get-set-elems s)
+         {:tag :relation :sets ([A B] :seq)} (get-relation-elems A B)))
+
+(defn predicate?
+  [ir]
+  (= "predicate" (get-type ir)))
 
 (defn get-props-as-pred
   []
@@ -171,18 +172,19 @@
   [id]
   (seq (s/select [VARIABLES s/ALL #(= % id)] (:ir @db))))
 
+(defn constant?
+  [id]
+  (seq (s/select [CONSTANTS s/ALL #(= % id)] (:ir @db))))
 
 (defn finite-type?
   [expr]
   (if (carrier? expr)
     true
-    (let [TS (get-type expr)
-          TIR (typestring->ir TS)]
-      (match TIR
+      (match (get-type-ir expr)
         {:tag :power-set :set (_ :guard finite-type?)} true
         {:tag :integer-set} false
         {:tag :relation :sets ([A B] :seq)} (and (carrier? A) (carrier? B))
-        _ false))))
+        _ false)))
 
 (defn finite?
   [expr]
@@ -191,39 +193,30 @@
     {:tag :cardinality} true
     _ (finite-type? expr)))
 
-
-(defn unrollable-var?
-  [var-id]
-  (and (variable? var-id) (finite? var-id)))
-
-(defn- varid->elems
-  [var-id]
-  (let [TS (get-type var-id)
-        TIR (typestring->ir TS)]
-    (match TIR
-           {:tag :power-set :set S} (get-set-elems S)
-           {:tag :relation :sets ([A B] :seq)} (get-relation-elems A B)
-           )))
-
-(defn finite-var?
-  [var-id]
-  (and (variable? var-id) (finite? var-id)))
+(def unrollable-var?
+  (memoize
+   (fn [var-id]
+     (and (variable? var-id) (finite? var-id)))))
 
 (defn unroll-variable
   [var-id]
-  (if (finite-var? var-id)
-    (map (partial create-boolname var-id) (varid->elems var-id))
+  (if (unrollable-var? var-id)
+    (map (partial create-boolname var-id) (get-sub-type-elems var-id))
     (list var-id)))
+
+(defn unroll-variable-as-matrix
+  [var-id rdom rran]
+  (let [dom-elems (get-set-elems rdom)
+        ran-elems (get-set-elems rran)]
+    (m/matrix (for [d dom-elems]
+                (for [r ran-elems]
+                  (create-boolname var-id d r))))))
 
 (defn get-all-bools
   []
   (let [vars (s/select [VARIABLES s/ALL] (:ir @db))]
     (filter #(not (variable? %)) (mapcat unroll-variable vars))))
 
-(defn get-all-elems-from-elem
-  [elem-id]
-  (let [elem-type (typestring->ir (get-type elem-id))]
-    (get-set-elems elem-type)))
 
 (defn elem->bools
   [elem]
@@ -251,9 +244,9 @@
 
 (defn bv->shape
   [bv]
-  [2 2])
+  [2 2]) ;; FIXMEE
 
-(defn invert-bitvector
+(defn transpose-bitvector
   [bv]
   (let [shape (bv->shape bv)]
     (flatten (m/transpose (m/reshape (m/matrix bv) shape)))))
@@ -271,8 +264,7 @@
 
 (defn image
   [bv s]
-  (let [ss (:ss @db)
-        elems (interpret-animator-result (eval-ir-formula ss (bcomprehension-set [:x] (bmember? :x s))))
+  (let [elems (comprehend :x (bmember? :x s))
         bools (mapcat elem->bools elems)]
     (filter (fn [ir] (involves? ir bools)) bv)))
 
@@ -280,33 +272,32 @@
   [op id]
    (s/select [(s/codewalker #(guard? % id))] op))
 
+(defn get-vars []
+  (s/select [VARIABLES s/ALL] (:ir @db)))
+
+(defn get-constants []
+  (s/select [CONSTANTS s/ALL] (:ir @db)))
+
 (defn get-param-elems [ir id]
-  (let [vars (s/select [VARIABLES s/ALL] (:ir @db))
-        guards (apply band (find-guards ir id))]
-    (interpret-animator-result
-     (get-possible-var-states
-      (:ss @db)
-      id
-      vars
-      (band guards (get-props-and-invars-as-pred))))))
+  (let [guards (apply band (find-guards ir id))]
+    (comprehend [id] (bexists (concat (get-vars) (get-constants)) (band guards (get-props-and-invars-as-pred))))))
 
 (defn get-operation
   [name]
   (first (s/select [(OPERATION name)] (:ir @db))))
 
 (defn combine
-  [op bindings id]
-  (let [elems (get-param-elems op id)]
-    (if (empty? bindings)
-      (mapv (fn [elem] [[id elem]]) elems)
-      (for [b bindings
-            e elems]
-        (conj b [id e])))))
+  [bindings [id elems]]
+  (if (empty? bindings)
+    (mapv (fn [elem] [[id elem]]) elems)
+    (for [b bindings
+          e elems]
+      (conj b [id e]))))
 
 (defn op->bindings
   [op]
   (let [ids (concat (:args op) (get-non-det-ids op))]
-    (reduce (partial combine op) [] ids)))
+    (reduce combine [] (map (fn [id] [id (get-param-elems op id)]) ids))))
 
 (defn get-sets []
   (s/select [(CLAUSE :sets) :values s/ALL] (:ir @db)))

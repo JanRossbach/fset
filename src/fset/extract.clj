@@ -2,7 +2,7 @@
   (:require
    [clojure.core.match :refer [match]]
    [com.rpl.specter :as s]
-   [lisb.translation.lisb2ir :refer [bassign bparallel-substitution]]))
+   [lisb.translation.lisb2ir :refer [bassign bparallel-sub]]))
 
 (defn get-varnames
   [ir id]
@@ -15,7 +15,7 @@
          {:tag :apply :f (_ :guard #(= % id)) :args ([varname] :seq)} varname
          {:tag :assignment
           :ids (_ :guard #(= % (list id)))
-          :values ([S] :seq)} (apply bparallel-substitution (map (fn [[varname val]] (bassign varname val)) S))
+          :values ([S] :seq)} (apply bparallel-sub (map (fn [[varname val]] (bassign varname val)) S))
          _ nil))
 
 (defn extract

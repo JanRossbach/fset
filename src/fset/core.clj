@@ -1,6 +1,6 @@
 (ns fset.core
   (:require
-   [fset.dsl :refer [MACHINE AND OR =TRUE <=> NOT TRUE FALSE EQUALS => BOOL BOOLDEFS IF ASSIGN]]
+   [fset.dsl :refer [MACHINE AND OR =TRUE <=> NOT TRUE FALSE EQUALS => BOOL BOOLDEFS IF ASSIGN IN FUN SURJECTIVE INJECTIVE BIJECTIVE TOTAL-FUN CARDINALITY]]
    [clojure.core.match :refer [match]]
    [com.rpl.specter :as s]
    [fset.backend :as b]))
@@ -31,9 +31,7 @@
   ((fn T [e]
      (match e
        #{} (repeat (b/get-max-size) FALSE)
-       (enumeration-set :guard set?) (map (fn [e] (if (contains? enumeration-set e) TRUE FALSE)) (b/get-all-elems-from-elem (first enumeration-set)))
-       {:tag :comprehension-set :ids ids :preds preds} '() ;; FIXMEEEE set-comprehension
-       ;; FIXME Lambda expressions
+       (enumeration-set :guard set?) (map (fn [e] (if (contains? enumeration-set e) TRUE FALSE)) (b/get-type-elems (first enumeration-set)))
        {:tag :union :sets ([A B] :seq)} (map (fn [a b] (OR a b)) (T A) (T B))
        {:tag :intersection :sets ([A B] :seq)} (map (fn [a b] (AND a b)) (T A) (T B))
        {:tag :difference :sets ([A B] :seq)} (map (fn [a b] (AND a (NOT b))) (T A) (T B))
@@ -42,25 +40,28 @@
        {:tag :sub :nums ns} (T {:tag :difference :sets ns})
        {:tag :integer-set} (list e)
 
-       {:tag :inverse :rel r} (b/invert-bitvector (T r))
+       {:tag :inverse :rel r} (b/transpose-bitvector (T r))
        {:tag :image :rel r :set s} (b/image (T r) s)
 
+       {:tag :comprehension-set} (map (fn [elem] (IN elem e)) (b/get-sub-type-elems e))
+       {:tag :lambda} (map (fn [elem] (IN elem e)) (b/get-sub-type-elems e))
        (variable :guard b/variable?) (map =TRUE (b/unroll-variable variable))
+       (constant :guard b/constant?) (map (fn [elem] (IN elem constant)) (b/get-sub-type-elems constant))
        _ (list e)))
    set-expr))
 
 (defn intexpr->intexpr
   [intexpr]
   (match intexpr
-    {:tag :cardinality :set s} {:tag :add :nums (map (fn [p] (IF (=TRUE (BOOL p)) 1 0)) (setexpr->bitvector s))}
+    {:tag :cardinality :set s} (CARDINALITY (fn [p] (=TRUE (BOOL p))) (setexpr->bitvector s))
     _ intexpr))
 
 (defn- unroll-expression
   [expr]
   (match expr
-         (_ :guard b/setexpr?) (setexpr->bitvector expr)
-         (_ :guard b/intexpr?) (intexpr->intexpr expr)
-         _ expr))
+    (_ :guard b/setexpr?) (setexpr->bitvector expr)
+    (_ :guard b/intexpr?) (intexpr->intexpr expr)
+    _ expr))
 
 (defn- unroll-predicate
   [pred]
@@ -83,15 +84,46 @@
        {:tag :implication :preds ([A B] :seq)} (=> (T A) (T B))
 
        ;; Quantifiers
-       {:tag :for-all :ids ids :implication {:tag :implication :preds ([P Q] :seq)}} (apply AND (apply map (fn [& es]
-                                                                                                             (=> (T (replace-params P (map (fn [id e] [id e]) ids es)))
-                                                                                                                 (T (replace-params Q (map (fn [id e] [id e]) ids es)))))
+       {:tag :for-all :ids ids :implication {:tag :implication :preds ([P Q] :seq)}} (apply AND (apply map
+                                                                                                       (fn [& es] (let [id-vals (map (fn [id e] [id e]) ids es)]
+                                                                                                                    (=> (T (replace-params P id-vals))
+                                                                                                                        (T (replace-params Q id-vals)))))
                                                                                                        (map (partial b/get-param-elems P) ids)))
+       ;;; FIXMEEEEEE  Abstract out the replacement of ids with id-vals from just operations so it can be used here. Maybe resolve it using set comprehension
+       {:tag :exists :ids ids :pred P} (apply OR (apply map
+                                                        (fn [& es] (let [id-vals (map (fn [id e] [id e]) ids es)]
+                                                                     (T (replace-params P id-vals))))
+                                                        (map (partial b/get-param-elems P) ids)))
 
-       ;; FIXMEE Exists
        ;; Member
        {:tag :member :elem (_ :guard b/set-element?) :set (_ :guard type?)} TRUE
        {:tag :member :elem (el-id :guard b/set-element?) :set v} (first (b/pick-bool-var (setexpr->bitvector v) el-id))
+
+       ;; Concrete Function Types
+       {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-fn :sets ([A B] :seq)}}
+       (FUN (b/unroll-variable-as-matrix v A B))
+
+       {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-fn :sets ([A B] :seq)}}
+       (TOTAL-FUN (b/unroll-variable-as-matrix v A B))
+
+       {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-surjection :sets ([A B] :seq)}}
+       (let [em (b/unroll-variable-as-matrix v A B)] (AND (FUN em) (SURJECTIVE em)))
+
+       {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-surjection :sets ([A B] :seq)}}
+       (let [em (b/unroll-variable-as-matrix v A B)] (AND (TOTAL-FUN em) (SURJECTIVE em)))
+
+       {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-injection :sets ([A B] :seq)}}
+       (let [em (b/unroll-variable-as-matrix v A B)] (AND (FUN em) (INJECTIVE em)))
+
+       {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-injection :sets ([A B] :seq)}}
+       (let [em (b/unroll-variable-as-matrix v A B)] (AND (TOTAL-FUN em) (INJECTIVE em)))
+
+       {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-bijection :sets ([A B] :seq)}}
+       (let [em (b/unroll-variable-as-matrix v A B)] (AND (FUN em) (BIJECTIVE em)))
+
+       {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-bijection :sets ([A B] :seq)}}
+       (let [em (b/unroll-variable-as-matrix v A B)] (AND (TOTAL-FUN em) (BIJECTIVE em)))
+
        {:tag :member :elem (_ :guard b/unrollable-var?) :set (_ :guard type?)} {}
        {:tag :member} e
 
@@ -124,7 +156,6 @@
        {:tag :any :ids _ :pred _ :subs then} {:tag :parallel-sub :subs (map T then)}
        _ e))
    sub))
-
 
 (defn- apply-binding
   [body binding]

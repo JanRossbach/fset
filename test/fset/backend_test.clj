@@ -61,9 +61,9 @@
 
 (deftest get-all-elems-from-elem-test-scheduler
   (b/setup-backend scheduler-ir)
-  (is (= '(:PID1 :PID2 :PID3) (b/get-all-elems-from-elem :PID1)))
-  (is (= '(:PID1 :PID2 :PID3) (b/get-all-elems-from-elem :PID2)))
-  (is (= '(:PID1 :PID2 :PID3) (b/get-all-elems-from-elem :PID3))))
+  (is (= '(:PID1 :PID2 :PID3) (b/get-type-elems :PID1)))
+  (is (= '(:PID1 :PID2 :PID3) (b/get-type-elems :PID2)))
+  (is (= '(:PID1 :PID2 :PID3) (b/get-type-elems :PID3))))
 
 (deftest pick-bool-var-test-scheduler
   (b/setup-backend scheduler-ir)
@@ -79,6 +79,7 @@
     (is (= [[[:rr :PID1]] [[:rr :PID2]] [[:rr :PID3]]] (b/op->bindings (b/get-operation :ready))))
     (is (= [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]] (b/op->bindings (b/get-operation :del))))
     (is (= [[[:pp :PID1]] [[:pp :PID2]] [[:pp :PID3]]] (b/op->bindings (b/get-operation :swap))))))
+
 
 (deftest elem->bools
   (b/setup-backend scheduler-ir)
