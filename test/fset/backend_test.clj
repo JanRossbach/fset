@@ -120,10 +120,6 @@
 (def im-P2 '({:tag :equals, :left :account_accessP2A1, :right :TRUE}
              {:tag :equals, :left :account_accessP2A2, :right :TRUE}))
 
-(deftest get-relation-elems-from-elem-test
-  (b/setup-backend banking-ir)
-  (is (= '([:P1 :A1] [:P1 :A2] [:P2 :A1] [:P2 :A2]) (b/get-all-elems-from-elem [:P1 :A1]))))
-
 (deftest image-test-banking
   (b/setup-backend banking-ir)
   (is (= im-A1 (b/image rel-bitvector #{:A1})))

@@ -28,6 +28,15 @@
 
 (def db (atom {}))
 
+(defn variable?
+  [id]
+  (seq (s/select [VARIABLES s/ALL #(= % id)] (:ir @db))))
+
+(defn constant?
+  [id]
+  (seq (s/select [CONSTANTS s/ALL #(= % id)] (:ir @db))))
+
+
 (def get-type
   (memoize
    (fn [formula]
@@ -50,7 +59,7 @@
 (defn interpret-animator-result
   [result]
   (if (= result :timeout)
-    (throw (ex-info "Animator call timed out!" {}))
+    :timeout
     (match (first result)
       (_ :guard string?) (sort (map keyword result))
       (_ :guard vector?) (sort-by first (map (fn [v] (mapv keyword v)) result))
@@ -168,13 +177,6 @@
   [id]
   (seq (s/select [SETS :elems s/ALL #(= % id)] (:ir @db))))
 
-(defn variable?
-  [id]
-  (seq (s/select [VARIABLES s/ALL #(= % id)] (:ir @db))))
-
-(defn constant?
-  [id]
-  (seq (s/select [CONSTANTS s/ALL #(= % id)] (:ir @db))))
 
 (defn finite-type?
   [expr]
@@ -204,10 +206,11 @@
     (map (partial create-boolname var-id) (get-sub-type-elems var-id))
     (list var-id)))
 
+
 (defn unroll-variable-as-matrix
   [var-id rdom rran]
-  (let [dom-elems (get-set-elems rdom)
-        ran-elems (get-set-elems rran)]
+  (let [dom-elems (get-sub-type-elems rdom)
+        ran-elems (get-sub-type-elems rran)]
     (m/matrix (for [d dom-elems]
                 (for [r ran-elems]
                   (create-boolname var-id d r))))))
@@ -278,9 +281,16 @@
 (defn get-constants []
   (s/select [CONSTANTS s/ALL] (:ir @db)))
 
+(defn get-pred-type [pred]
+  (match pred
+         {:tag :and :preds ps} (get-pred-type (first ps))
+         {:tag :not :pred p} (get-pred-type p)
+         {:tag :member :elem _ :set S} S))
+
 (defn get-param-elems [ir id]
-  (let [guards (apply band (find-guards ir id))]
-    (comprehend [id] (bexists (concat (get-vars) (get-constants)) (band guards (get-props-and-invars-as-pred))))))
+  (let [guards (apply band (find-guards ir id))
+        Type (get-pred-type guards)]
+      (get-sub-type-elems Type)))
 
 (defn get-operation
   [name]
@@ -294,10 +304,13 @@
           e elems]
       (conj b [id e]))))
 
+(defn ids->bindings [ir ids]
+  (reduce combine [] (map (fn [id] [id (get-param-elems ir id)]) ids)))
+
 (defn op->bindings
   [op]
   (let [ids (concat (:args op) (get-non-det-ids op))]
-    (reduce combine [] (map (fn [id] [id (get-param-elems op id)]) ids))))
+    (ids->bindings op ids)))
 
 (defn get-sets []
   (s/select [(CLAUSE :sets) :values s/ALL] (:ir @db)))

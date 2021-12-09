@@ -10,9 +10,10 @@
   [ir [parameter element]]
   (s/setval [(s/walker #(= % parameter))] element ir))
 
-(defn- replace-params
-  [ir id-vals]
-  (reduce replace-param ir id-vals))
+
+(defn- apply-binding
+  [body binding]
+  (reduce replace-param body binding))
 
 (defn- type?
   [expr]
@@ -24,7 +25,6 @@
     {:tag :fin :set (_ :guard type?)} true
     {:tag :fin1 :set (_ :guard type?)} true
     _ false))
-
 
 (defn setexpr->bitvector
   [set-expr]
@@ -84,16 +84,13 @@
        {:tag :implication :preds ([A B] :seq)} (=> (T A) (T B))
 
        ;; Quantifiers
-       {:tag :for-all :ids ids :implication {:tag :implication :preds ([P Q] :seq)}} (apply AND (apply map
-                                                                                                       (fn [& es] (let [id-vals (map (fn [id e] [id e]) ids es)]
-                                                                                                                    (=> (T (replace-params P id-vals))
-                                                                                                                        (T (replace-params Q id-vals)))))
-                                                                                                       (map (partial b/get-param-elems P) ids)))
-       ;;; FIXMEEEEEE  Abstract out the replacement of ids with id-vals from just operations so it can be used here. Maybe resolve it using set comprehension
-       {:tag :exists :ids ids :pred P} (apply OR (apply map
-                                                        (fn [& es] (let [id-vals (map (fn [id e] [id e]) ids es)]
-                                                                     (T (replace-params P id-vals))))
-                                                        (map (partial b/get-param-elems P) ids)))
+       {:tag :for-all :ids ids :implication {:tag :implication :preds ([P Q] :seq)}}
+       (apply AND (map (fn [binding] (=> (T (apply-binding P binding))
+                                        (T (apply-binding Q binding))))
+                       (b/ids->bindings P ids)))
+
+       {:tag :exists :ids ids :pred P}
+       (apply AND (map (fn [binding] (T (apply-binding P binding))) (b/ids->bindings ids)))
 
        ;; Member
        {:tag :member :elem (_ :guard b/set-element?) :set (_ :guard type?)} TRUE
@@ -157,9 +154,6 @@
        _ e))
    sub))
 
-(defn- apply-binding
-  [body binding]
-  (reduce replace-param body binding))
 
 
 (defn- add-guards
