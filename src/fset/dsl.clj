@@ -1,6 +1,6 @@
 (ns fset.dsl
   (:require
-   [lisb.translation.lisb2ir :refer [b= bpred->bool band bor bnot bequivalence bimplication bsubset? bmember? bif-expr bassign b+ b<= b>=]]
+   [lisb.translation.lisb2ir :refer [b= bpred->bool band bor bnot bequivalence bimplication bsubset? bmember? bif-expr bassign b+ b<= b>= bunion]]
    [clojure.core.matrix :as m]))
 
 (def TRUE
@@ -81,3 +81,7 @@
 
 (defn BIJECTIVE [elem-matrix]
   (TOTAL-FUN (m/transpose elem-matrix)))
+
+(defn bv->setexpr [bv]
+  (apply bunion
+   (map (fn [{:keys [name elem]}] (IF (=TRUE name) #{elem} #{})) bv)))

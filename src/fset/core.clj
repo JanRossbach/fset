@@ -1,6 +1,6 @@
 (ns fset.core
   (:require
-   [fset.dsl :refer [MACHINE AND OR =TRUE <=> NOT TRUE FALSE EQUALS => BOOL BOOLDEFS IF ASSIGN IN FUN SURJECTIVE INJECTIVE BIJECTIVE TOTAL-FUN CARDINALITY]]
+   [fset.dsl :refer [MACHINE AND OR =TRUE <=> NOT TRUE FALSE EQUALS => BOOL BOOLDEFS IF ASSIGN IN FUN SURJECTIVE INJECTIVE BIJECTIVE TOTAL-FUN CARDINALITY bv->setexpr]]
    [clojure.core.match :refer [match]]
    [com.rpl.specter :as s]
    [fset.backend :as b]))
@@ -42,6 +42,7 @@
 
        {:tag :inverse :rel r} (b/transpose-bitvector (T r))
        {:tag :image :rel r :set s} (b/image (T r) s)
+       {:tag :fn-call :f f :args args} '()
 
        {:tag :comprehension-set} (map (fn [elem] (IN elem e)) (b/get-sub-type-elems e))
        {:tag :lambda} (map (fn [elem] (IN elem e)) (b/get-sub-type-elems e))
@@ -154,8 +155,6 @@
        _ e))
    sub))
 
-
-
 (defn- add-guards
   [op guards]
   (assoc op :body {:tag :select :clauses (list (apply AND guards) (:body op))}))
@@ -239,4 +238,14 @@
   (->> ir
        (b/setup-backend)
        (unroll-machine)
+       (simplify-all)))
+
+(defn unroll-variables [ir]
+  (s/transform [(s/walker b/variable?)] (comp bv->setexpr b/unroll-variable2) ir))
+
+(defn boolencode2
+  [ir]
+  (->> ir
+       (b/setup-backend)
+       (unroll-variables)
        (simplify-all)))

@@ -206,6 +206,14 @@
     (map (partial create-boolname var-id) (get-sub-type-elems var-id))
     (list var-id)))
 
+(defn unroll-variable2
+  [var-id]
+  (if (unrollable-var? var-id)
+    (map (fn [elem] {:name (create-boolname var-id elem)
+                    :elem elem
+                    :var var-id}))
+    (list var-id)))
+
 
 (defn unroll-variable-as-matrix
   [var-id rdom rran]
@@ -270,6 +278,9 @@
   (let [elems (comprehend :x (bmember? :x s))
         bools (mapcat elem->bools elems)]
     (filter (fn [ir] (involves? ir bools)) bv)))
+
+
+
 
 (defn find-guards
   [op id]

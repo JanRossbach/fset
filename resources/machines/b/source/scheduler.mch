@@ -6,7 +6,7 @@ SETS
 VARIABLES active, ready, waiting
 
 INVARIANT
-           active : POW(PID) & ready : POW(PID) & waiting: POW(PID) &/* the types */
+           active : POW(PID) & ready : POW(PID) & waiting: POW(PID) & /* the types */
            /* and now the rest of the invariant */
            active <: PID &
            ready <: PID   &
@@ -18,6 +18,7 @@ INVARIANT
 
 INITIALISATION
     active := {} || ready := {} || waiting := {}
+    
 
 OPERATIONS
 
