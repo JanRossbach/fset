@@ -20,10 +20,10 @@
   ((fn T [e]
      (match e
        {:tag :parallel-sub :subs substitutions} {:tag :parallel-sub :subs (map T substitutions)}
-       {:tag :assignment :id-vals id-vals} {:tag :parallel-sub :subs (mapcat unroll-id-val (partition 2 id-vals))}
        {:tag :if-sub :cond condition :then then :else else} {:tag :if-sub :cond (unroll-predicate condition) :then (T then) :else (T else)}
        {:tag :select :clauses clauses} {:tag :select :clauses (mapcat (fn [[P S]] [(unroll-predicate P) (T S)]) (partition 2 clauses))}
        {:tag :any :ids _ :pred _ :subs then} {:tag :parallel-sub :subs (map T then)}
+       {:tag :assignment :id-vals id-vals} {:tag :parallel-sub :subs (mapcat unroll-id-val (partition 2 id-vals))}
        _ e))
    sub))
 

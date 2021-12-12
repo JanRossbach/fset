@@ -37,7 +37,7 @@
 
          ;; Member
          {:tag :member :elem (_ :guard b/set-element?) :set (_ :guard b/type?)} TRUE
-         {:tag :member :elem (el-id :guard b/set-element?) :set v} (first (b/pick-bool-var (setexpr->bitvector v) el-id))
+         {:tag :member :elem (el-id :guard b/set-element?) :set (v :guard b/unrollable-var?)} (first (b/pick-bool-var (setexpr->bitvector v) el-id))
 
          ;; Concrete Function Types
          {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-fn :sets ([A B] :seq)}}

@@ -18,7 +18,7 @@
 
 (ir->b (fset/boolencode scheduler-ir))
 
-(spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (fset/boolencode scheduler-ir))) ;; Write the translated IR to another file
+(spit "resources/machines/b/target/scheduler_auto1.mch" (ir->b (fset/boolencode scheduler-ir))) ;; Write the translated IR to another file
 
 (spit "resources/test/scheduler-ir.edn" (fset/boolencode scheduler-ir))
 
@@ -42,6 +42,7 @@
 
 (pprint (fset/boolencode scheduler-ir))
 
+
 (ir->b (fset/boolencode scheduler-ir))
 
 (b/eval-constant :nxt)
@@ -57,4 +58,4 @@
 (defn boolcount [var]
   (count (filter (fn [b] (= (:var b) var)) (b/get-all-bools))))
 
-(b/get-type :rsrtbl)
+(b/setup-backend train-ir)

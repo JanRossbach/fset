@@ -23,14 +23,13 @@
 
        ;; Relations
 
-
        {:tag :inverse :rel r} (b/transpose-bitvector (T r))
        {:tag :image :rel (r :guard b/unrollable-var?) :set s} (b/image (T r) s)
 
        {:tag :comprehension-set} (map (fn [elem] (IN elem e)) (b/get-sub-type-elems e))
        {:tag :lambda} (map (fn [elem] (IN elem e)) (b/get-sub-type-elems e))
-       (variable :guard b/variable?) (map =TRUE (map :name (b/unroll-variable variable)))
        (constant :guard b/constant?) (map (fn [elem] (IN elem constant)) (b/get-sub-type-elems constant))
+       (variable :guard b/unrollable-var?) (map =TRUE (map :name (b/unroll-variable variable)))
        _ (throw (ex-info "Expression not supported" {:expr set-expr}))))
    set-expr))
 
