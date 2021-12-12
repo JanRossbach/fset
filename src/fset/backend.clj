@@ -229,10 +229,11 @@
     {:tag :cardinality} true
     _ (finite-type? expr)))
 
-(def unrollable-var?
-  (memoize
-   (fn [var-id]
-     (and (not (contains? cfg/excluded-vars var-id))(variable? var-id) (finite? var-id)))))
+(defn unrollable-var?
+  [var-id]
+  (and (not (contains? cfg/excluded-vars var-id))
+       (variable? var-id)
+       (finite? var-id)))
 
 (defn unroll-variable
   [var-id]

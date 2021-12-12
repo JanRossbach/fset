@@ -65,7 +65,6 @@
          (let [em (b/unroll-variable-as-matrix v A B)] (AND (TOTAL-FUN em) (BIJECTIVE em)))
 
          {:tag :member :elem (_ :guard b/unrollable-var?) :set (_ :guard b/type?)} {}
-         {:tag :member} e
 
          ;; Numbers
          {:tag :equals :left l :right r} {:tag :equals :left (intexpr->intexpr l) :right (intexpr->intexpr r)}
