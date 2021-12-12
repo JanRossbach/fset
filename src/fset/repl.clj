@@ -10,6 +10,8 @@
 
 (def scheduler-ir (b->ir (slurp "resources/machines/b/source/scheduler.mch"))) ;; Read in the B machine IR from a file
 
+(def numbers-ir (b->ir (slurp "resources/test/Numbers.mch")))
+
 (b/setup-backend scheduler-ir)
 
 (pprint (fset/boolencode scheduler-ir))
@@ -17,6 +19,8 @@
 (ir->b (fset/boolencode scheduler-ir))
 
 (spit "resources/machines/b/target/scheduler_auto.mch" (ir->b (fset/boolencode scheduler-ir))) ;; Write the translated IR to another file
+
+(spit "resources/test/scheduler-ir.edn" (fset/boolencode scheduler-ir))
 
 (def test-ir (b->ir (slurp "resources/machines/b/source/test.mch")))
 
@@ -32,5 +36,25 @@
 
 (b/setup-backend train-ir)
 
+(def train-ir-auto (fset/boolencode train-ir))
 
-(fset/boolencode2 scheduler-ir)
+(spit "resources/machines/b/target/train_auto.mch" (ir->b (fset/boolencode train-ir)))
+
+(pprint (fset/boolencode scheduler-ir))
+
+(ir->b (fset/boolencode scheduler-ir))
+
+(b/eval-constant :nxt)
+
+(pprint (fset/boolencode train-ir))
+
+(fset/boolencode train-ir)
+
+(pprint (b/eval-constant :nxt))
+
+(ir->b train-ir-auto)
+
+(defn boolcount [var]
+  (count (filter (fn [b] (= (:var b) var)) (b/get-all-bools))))
+
+(b/get-type :rsrtbl)

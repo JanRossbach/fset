@@ -6,7 +6,7 @@
    [lisb.core :refer [eval-ir-formula]]
    [lisb.prob.animator :refer [state-space!]]
    [lisb.translation.util :refer [ir->ast b->ir]]
-   [lisb.translation.lisb2ir :refer [bmember? bcomprehension-set bexists band]])
+   [lisb.translation.lisb2ir :refer [bmember? bcomprehension-set bexists band b=]])
   (:import
    de.prob.animator.domainobjects.ClassicalB
    de.prob.animator.domainobjects.FormulaExpand))
@@ -28,6 +28,12 @@
 
 (def db (atom {}))
 
+(defn get-vars []
+  (s/select [VARIABLES s/ALL] (:ir @db)))
+
+(defn get-constants []
+  (s/select [CONSTANTS s/ALL] (:ir @db)))
+
 (defn variable?
   [id]
   (seq (s/select [VARIABLES s/ALL #(= % id)] (:ir @db))))
@@ -35,7 +41,6 @@
 (defn constant?
   [id]
   (seq (s/select [CONSTANTS s/ALL #(= % id)] (:ir @db))))
-
 
 (def get-type
   (memoize
@@ -48,13 +53,14 @@
 (def get-statespace
   (memoize (fn [ir] (state-space! (ir->ast ir)))))
 
-(defn- typestring->ir
+(defn typestring->ir
   [type-str]
   (let [query-str (str "MACHINE scheduler\nCONSTANTS x\nPROPERTIES x:" type-str "\nEND")
         query-ir (b->ir query-str)]
     (first (s/select [(CLAUSE :properties) :values s/FIRST :set] query-ir))))
 
 (def get-type-ir (memoize (comp typestring->ir get-type)))
+
 
 (defn interpret-animator-result
   [result]
@@ -65,6 +71,18 @@
       (_ :guard vector?) (sort-by first (map (fn [v] (mapv keyword v)) result))
       (_ :guard set?) (map interpret-animator-result result)
       nil '())))
+
+(defn interpret-animator-result2
+  [result]
+  (s/transform [(s/walker string?)] keyword result))
+
+(defn- replace-param
+  [ir [parameter element]]
+  (s/setval [(s/walker #(= % parameter))] element ir))
+
+(defn apply-binding
+  [body binding]
+  (reduce replace-param body binding))
 
 (defn comprehend
   [ids pred]
@@ -81,6 +99,9 @@
   [rdomain rrange]
   (comprehend [:x :y] (band (bmember? :x rdomain)
                             (bmember? :y rrange))))
+
+(defn unrollable-pred? [p]
+  true)
 
 (def get-type-elems (comp get-set-elems get-type-ir))
 
@@ -114,6 +135,9 @@
         invars (:preds (get-invars-as-pred))]
     {:tag :and
      :preds (concat props invars)}))
+
+(defn eval-constant [c]
+  (comprehend [:x] (bexists (get-constants) (band (b= :x c) (get-props-as-pred)))))
 
 (defn- involves?
   [ir ids]
@@ -170,6 +194,17 @@
   [id]
   (seq (s/select [SETS :id #(= % id)] (:ir @db))))
 
+(defn type?
+  [expr]
+  (match expr
+    (_ :guard carrier?) true
+    {:tag :relation :sets ([_ _] :seq)} true
+    {:tag :power-set :set (_ :guard type?)} true
+    {:tag :power1-set :set (_ :guard type?)} true
+    {:tag :fin :set (_ :guard type?)} true
+    {:tag :fin1 :set (_ :guard type?)} true
+    _ false))
+
 (defn create-boolname [& ids]
   (keyword (apply str (map (fn [id] (if (keyword? id) (name id) id)) (flatten ids)))))
 
@@ -203,17 +238,10 @@
 (defn unroll-variable
   [var-id]
   (if (unrollable-var? var-id)
-    (map (partial create-boolname var-id) (get-sub-type-elems var-id))
-    (list var-id)))
-
-(defn unroll-variable2
-  [var-id]
-  (if (unrollable-var? var-id)
     (map (fn [elem] {:name (create-boolname var-id elem)
                     :elem elem
-                    :var var-id}))
-    (list var-id)))
-
+                    :var var-id}) (get-sub-type-elems var-id))
+    (list {:name var-id :elem nil :var var-id})))
 
 (defn unroll-variable-as-matrix
   [var-id rdom rran]
@@ -226,7 +254,7 @@
 (defn get-all-bools
   []
   (let [vars (s/select [VARIABLES s/ALL] (:ir @db))]
-    (filter #(not (variable? %)) (mapcat unroll-variable vars))))
+    (filter #(not (variable? (:name %))) (mapcat unroll-variable vars))))
 
 
 (defn elem->bools
@@ -286,11 +314,6 @@
   [op id]
    (s/select [(s/codewalker #(guard? % id))] op))
 
-(defn get-vars []
-  (s/select [VARIABLES s/ALL] (:ir @db)))
-
-(defn get-constants []
-  (s/select [CONSTANTS s/ALL] (:ir @db)))
 
 (defn get-pred-type [pred]
   (match pred

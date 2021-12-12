@@ -1,9 +1,8 @@
 (ns fset.backend-test
   (:require
    [clojure.test :refer [deftest testing is are]]
-   [lisb.translation.lisb2ir :refer :all]
    [lisb.translation.lisb2ir :refer [b= bor]]
-   [fset.test-machines :refer [scheduler test-ir banking]]
+   [fset.test-machines :refer [scheduler test-ir banking train]]
    [fset.backend :as b]))
 
 ;; Tests on the scheduler
@@ -53,9 +52,9 @@
 (deftest unroll-variable-test-scheduler
   (b/setup-backend scheduler)
   (are [x y] (= x y)
-    '(:activePID1 :activePID2 :activePID3) (b/unroll-variable :active)
-    '(:readyPID1 :readyPID2 :readyPID3) (b/unroll-variable :ready)
-    '(:waitingPID1 :waitingPID2 :waitingPID3) (b/unroll-variable :waiting)))
+    '(:activePID1 :activePID2 :activePID3) (map :name (b/unroll-variable :active))
+    '(:readyPID1 :readyPID2 :readyPID3) (map :name (b/unroll-variable :ready))
+    '(:waitingPID1 :waitingPID2 :waitingPID3) (map :name (b/unroll-variable :waiting))))
 
 (deftest get-all-elems-from-elem-test-scheduler
   (b/setup-backend scheduler)

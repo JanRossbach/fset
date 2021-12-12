@@ -10,8 +10,8 @@
 
 (def scheduler-transformed (read-string (slurp "resources/test/scheduler-ir.edn")))
 
-(def banking (slurp (b->ir "resources/test/Banking.mch")))
+(def banking (b->ir (slurp "resources/test/Banking.mch")))
 
-(def train (slurp (b->ir "resources/test/Train.mch")))
+(def train (b->ir (slurp "resources/test/Train.mch")))
 
 (def test-ir (b->ir (slurp "resources/test/Test.mch")))
