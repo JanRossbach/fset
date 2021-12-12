@@ -1,5 +1,6 @@
 (ns fset.backend
   (:require
+   [fset.config :as cfg]
    [clojure.core.matrix :as m]
    [clojure.core.match :refer [match]]
    [com.rpl.specter :as s]
@@ -182,10 +183,9 @@
 
 (defn setup-backend ;; Call this before testing the backend isolated without an actual translation
   [ir]
-  (let [new-ir (replace-def-sets-with-enum-sets 2 ir)]
+  (let [new-ir (replace-def-sets-with-enum-sets cfg/deff-set-size ir)]
     (reset! db (assoc
                 {}
-                :max-size 5
                 :ir new-ir
                 :ss (get-statespace new-ir)))
     new-ir))
@@ -212,28 +212,27 @@
   [id]
   (seq (s/select [SETS :elems s/ALL #(= % id)] (:ir @db))))
 
-
 (defn finite-type?
   [expr]
   (if (carrier? expr)
     true
-      (match (get-type-ir expr)
-        {:tag :power-set :set (_ :guard finite-type?)} true
-        {:tag :integer-set} false
-        {:tag :relation :sets ([A B] :seq)} (and (carrier? A) (carrier? B))
-        _ false)))
+    (match (get-type-ir expr)
+      {:tag :power-set :set (_ :guard finite-type?)} true
+      {:tag :integer-set} false
+      {:tag :relation :sets ([A B] :seq)} (and (carrier? A) (carrier? B) (< (count (get-relation-elems A B)) cfg/max-unroll-size))
+      _ false)))
 
 (defn finite?
   [expr]
   (match expr
-    {:tag :interval :from n :to m} (< (- m n) (:max-size @db))
+    {:tag :interval :from n :to m} (< (- m n) cfg/max-unroll-size)
     {:tag :cardinality} true
     _ (finite-type? expr)))
 
 (def unrollable-var?
   (memoize
    (fn [var-id]
-     (and (variable? var-id) (finite? var-id)))))
+     (and (not (contains? cfg/excluded-vars var-id))(variable? var-id) (finite? var-id)))))
 
 (defn unroll-variable
   [var-id]
@@ -255,7 +254,6 @@
   []
   (let [vars (s/select [VARIABLES s/ALL] (:ir @db))]
     (filter #(not (variable? (:name %))) (mapcat unroll-variable vars))))
-
 
 (defn elem->bools
   [elem]
@@ -281,13 +279,9 @@
          {:tag :member :elem (_ :guard #(= % id)) :set _} true
          _ false))
 
-(defn bv->shape
-  [bv]
-  [2 2]) ;; FIXMEE
-
 (defn transpose-bitvector
   [bv]
-  (let [shape (bv->shape bv)]
+  (let [shape (m/shape bv)]
     (flatten (m/transpose (m/reshape (m/matrix bv) shape)))))
 
 (defn setexpr?
@@ -307,13 +301,9 @@
         bools (mapcat elem->bools elems)]
     (filter (fn [ir] (involves? ir bools)) bv)))
 
-
-
-
 (defn find-guards
   [op id]
    (s/select [(s/codewalker #(guard? % id))] op))
-
 
 (defn get-pred-type [pred]
   (match pred

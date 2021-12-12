@@ -1,10 +1,8 @@
 (ns fset.predicates
   (:require
-   [clojure.core.matrix :as m]
    [clojure.core.match :refer [match]]
-   [com.rpl.specter :as s]
    [fset.expressions :refer [unroll-expression setexpr->bitvector intexpr->intexpr boolvars->set]]
-   [fset.dsl :refer [MACHINE AND OR =TRUE <=> NOT TRUE FALSE EQUALS => BOOL BOOLDEFS IF ASSIGN IN FUN SURJECTIVE INJECTIVE BIJECTIVE TOTAL-FUN CARDINALITY bv->setexpr]]
+   [fset.dsl :refer [AND OR <=> NOT TRUE EQUALS => FUN SURJECTIVE INJECTIVE BIJECTIVE TOTAL-FUN]]
    [fset.backend :as b]))
 
 (defn unroll-predicate

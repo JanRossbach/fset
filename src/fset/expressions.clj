@@ -1,5 +1,6 @@
 (ns fset.expressions
   (:require
+   [fset.config :as cfg]
    [clojure.core.matrix :as m]
    [com.rpl.specter :as s]
    [clojure.core.match :refer [match]]
@@ -10,7 +11,7 @@
   [set-expr]
   ((fn T [e]
      (match e
-       #{} (repeat (b/get-max-size) FALSE)
+       #{} (repeat cfg/max-unroll-size FALSE)
        (enumeration-set :guard set?) (map (fn [e] (if (contains? enumeration-set e) TRUE FALSE)) (b/get-type-elems (first enumeration-set)))
        {:tag :union :sets ([A B] :seq)} (map (fn [a b] (OR a b)) (T A) (T B))
        {:tag :intersection :sets ([A B] :seq)} (map (fn [a b] (AND a b)) (T A) (T B))

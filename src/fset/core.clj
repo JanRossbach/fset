@@ -1,12 +1,11 @@
 (ns fset.core
   (:require
-   [fset.dsl :refer [MACHINE AND OR FALSE BOOL BOOLDEFS ASSIGN AND TRUE bv->setexpr]]
+   [fset.dsl :refer [MACHINE AND BOOL BOOLDEFS ASSIGN AND]]
    [fset.expressions :refer [unroll-expression boolvars->set]]
    [clojure.core.match :refer [match]]
    [fset.predicates :refer [unroll-predicate]]
    [fset.simplify :refer [simplify-all]]
    [fset.backend :as b]))
-
 
 (defn unroll-id-val
   [[id val]]
