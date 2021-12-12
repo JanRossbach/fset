@@ -23,8 +23,8 @@
 
        ;; Relations
 
-       {:tag :inverse :rel r} (b/transpose-bitvector (T r))
-       {:tag :image :rel (r :guard b/unrollable-var?) :set s} (b/image (T r) s)
+       {:tag :inverse :rel (r :guard b/finite?)} (b/transpose-bitvector (T r))
+       {:tag :image :rel (r :guard b/finite?) :set s} (b/image (T r) s)
 
        {:tag :comprehension-set} (map (fn [elem] (IN elem e)) (b/get-sub-type-elems e))
        {:tag :lambda} (map (fn [elem] (IN elem e)) (b/get-sub-type-elems e))

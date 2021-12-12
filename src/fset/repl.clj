@@ -34,3 +34,7 @@
 
 (defn boolcount [var]
   (count (filter (fn [b] (= (:var b) var)) (b/get-all-bools))))
+
+(b/setup-backend train-ir)
+
+(b/eval-constant :nxt)

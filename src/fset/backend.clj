@@ -12,7 +12,6 @@
    de.prob.animator.domainobjects.ClassicalB
    de.prob.animator.domainobjects.FormulaExpand))
 
-
 ;; SETUP
 
 (defn- TAG [t] (s/path #(= (:tag %) t)))
@@ -68,14 +67,11 @@
   (if (= result :timeout)
     :timeout
     (match (first result)
-      (_ :guard string?) (sort (map keyword result))
-      (_ :guard vector?) (sort-by first (map (fn [v] (mapv keyword v)) result))
-      (_ :guard set?) (map interpret-animator-result result)
-      nil '())))
-
-(defn interpret-animator-result2
-  [result]
-  (s/transform [(s/walker string?)] keyword result))
+           (_ :guard string?) (sort (map keyword result))
+           (_ :guard vector?) (sort-by first (map (fn [v] (mapv interpret-animator-result v)) result))
+           (_ :guard set?) (map interpret-animator-result result)
+           (_ :guard char?) (keyword result)
+           nil '())))
 
 (defn- replace-param
   [ir [parameter element]]

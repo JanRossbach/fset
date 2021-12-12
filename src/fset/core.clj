@@ -57,7 +57,6 @@
       (map (partial new-op op) bindings)
       (list (assoc op :body (unroll-sub (:body op)))))))
 
-
 (defn unroll-clause
   [c]
   (match c
