@@ -30,7 +30,11 @@
 
 (def train-ir-auto (fset/boolencode train-ir))
 
+(ir->b (fset/boolencode train-ir))
+
 (spit "resources/machines/b/target/train_auto.mch" (ir->b train-ir-auto))
+
+(pprint train-ir-auto)
 
 (defn boolcount [var]
   (count (filter (fn [b] (= (:var b) var)) (b/get-all-bools))))
@@ -38,3 +42,7 @@
 (b/setup-backend train-ir)
 
 (b/eval-constant :nxt)
+
+(ir->b train-ir-auto)
+
+(pprint train-ir-auto)

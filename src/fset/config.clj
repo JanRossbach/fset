@@ -4,12 +4,14 @@
 
 ;; Namespace to set global constants
 
+(def logging nil)
+
 (def max-unroll-size 200)
 
 (def deff-set-size 2)
 
 (def train-vars #{:LBT :TRK :frm :OCC :resbl :resrt :rsrtbl})
 
-(def train-vars-allowed #{:frm :resrt})
+(def train-vars-allowed #{:frm :resrt :resbl})
 
 (def excluded-vars (difference train-vars train-vars-allowed))

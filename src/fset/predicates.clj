@@ -1,5 +1,8 @@
 (ns fset.predicates
   (:require
+   [fset.config :as cfg]
+   [clojure.pprint :refer [pprint]]
+   [clojure.stacktrace :refer [print-throwable]]
    [clojure.core.match :refer [match]]
    [fset.expressions :refer [unroll-expression setexpr->bitvector intexpr->intexpr boolvars->set]]
    [fset.dsl :refer [AND OR <=> NOT TRUE EQUALS => FUN SURJECTIVE INJECTIVE BIJECTIVE TOTAL-FUN]]
@@ -74,4 +77,12 @@
          {:tag :greater-equals :nums ns} {:tag :greater-equals :nums (map intexpr->intexpr ns)}
          expr (unroll-expression expr)))
      pred)
-    (catch Exception _ (boolvars->set pred))))
+    (catch Exception e
+      (if cfg/logging
+        (do
+          (pprint "Kontext: Predicate ")
+          (print-throwable e)
+          (println)
+          (println))
+        nil)
+      (boolvars->set pred))))

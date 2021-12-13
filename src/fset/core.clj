@@ -1,6 +1,9 @@
 (ns fset.core
   (:require
-   [fset.dsl :refer [MACHINE AND BOOL BOOLDEFS ASSIGN AND]]
+   [fset.config :as cfg]
+   [clojure.stacktrace :refer [print-throwable]]
+   [clojure.pprint :refer [pprint]]
+   [fset.dsl :refer [MACHINE AND BOOL BOOLDEFS ASSIGN AND IN]]
    [fset.expressions :refer [unroll-expression boolvars->set]]
    [clojure.core.match :refer [match]]
    [fset.predicates :refer [unroll-predicate]]
@@ -10,9 +13,22 @@
 (defn unroll-id-val
   [[id val]]
   (if (b/unrollable-var? id)
-    (map (fn [v p] (ASSIGN v (BOOL p)))
-         (map :name (b/unroll-variable id))
-         (unroll-expression val))
+    (let [uvar (b/unroll-variable id)]
+      (try (let [uexpr (unroll-expression val)]
+             (map (fn [v p] (ASSIGN v (BOOL p)))
+                  (map :name uvar)
+                  uexpr))
+           (catch Exception e
+             (if cfg/logging
+               (do
+                 (pprint "Kontext: Assignment ")
+                 (print-throwable e)
+                 (println)
+                 (println))
+               nil)
+             (map (fn [v p] (ASSIGN v (BOOL p)))
+                  (map :name uvar)
+                  (map (fn [v] (IN (:elem v) (boolvars->set val))) uvar)))))
     (list (ASSIGN id (boolvars->set val)))))
 
 (defn unroll-sub
@@ -65,6 +81,7 @@
                                                                                       (boolvars->set v)))}
     {:tag :init :values v} {:tag :init :values (map unroll-sub v)}
     {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation v)}
+    {:tag :assertions :values v} {:tag :assertions :values (boolvars->set v)}
     _ c))
 
 (defn unroll-machine
