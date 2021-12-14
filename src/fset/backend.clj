@@ -28,6 +28,17 @@
 
 (def db (atom {}))
 
+(defn model-check [ir]
+  (let [ss (get-statespace ir)
+        cmd (de.prob.animator.command.ModelCheckingStepCommand. 999999 ; max number of states
+                                                                120000 ; time (in msecs?)
+                                                                de.prob.check.ModelCheckingOptions/DEFAULT)]
+    (.execute ss cmd)
+    (let [statsobj (.getStats cmd)]
+      {:result (.getResult cmd)
+       :states (.getNrTotalNodes statsobj)
+       :transitions (.getNrTotalTransitions statsobj)})))
+
 (defn get-vars []
   (s/select [VARIABLES s/ALL] (:ir @db)))
 
@@ -97,9 +108,6 @@
   (comprehend [:x :y] (band (bmember? :x rdomain)
                             (bmember? :y rrange))))
 
-(defn unrollable-pred? [p]
-  true)
-
 (def get-type-elems (comp get-set-elems get-type-ir))
 
 (defn get-sub-type-elems
@@ -108,6 +116,13 @@
          {:tag :power-set :set s} (get-set-elems s)
          {:tag :relation :sets ([A B] :seq)} (get-relation-elems A B)))
 
+(defn get-type-elem-matrix
+  [expr]
+  (match (get-type-ir expr)
+    {:tag :power-set :set s} (m/matrix (vector (get-set-elems s)))
+    {:tag :relation :sets ([A B] :seq)} (m/matrix (for [a (get-set-elems A)]
+                                                    (for [b (get-set-elems B)]
+                                                      [a b])))))
 (defn predicate?
   [ir]
   (= "predicate" (get-type ir)))
@@ -225,19 +240,15 @@
     {:tag :cardinality} true
     _ (finite-type? expr)))
 
-(defn unrollable-var?
-  [var-id]
-  (and (not (contains? cfg/excluded-vars var-id))
-       (variable? var-id)
-       (finite? var-id)))
+(defn unrollable?
+  [id]
+  (and (not (contains? cfg/excluded-vars id))
+       (finite? id)))
 
-(defn unroll-variable
-  [var-id]
-  (if (unrollable-var? var-id)
-    (map (fn [elem] {:name (create-boolname var-id elem)
-                    :elem elem
-                    :var var-id}) (get-sub-type-elems var-id))
-    (list {:name var-id :elem nil :var var-id})))
+(defn unrollable-var?
+  [id]
+  (and (variable? id)
+       (finite? id)))
 
 (defn unroll-variable-as-matrix
   [var-id rdom rran]
@@ -245,7 +256,23 @@
         ran-elems (get-sub-type-elems rran)]
     (m/matrix (for [d dom-elems]
                 (for [r ran-elems]
-                  (create-boolname var-id d r))))))
+                  {:name (create-boolname var-id d r)
+                   :elem [d r]
+                   :var var-id})))))
+
+(defn unroll-variable
+  [var-id]
+  (if (unrollable? var-id)
+    (let [TIR (get-type-ir var-id)]
+      (match TIR
+             {:tag :power-set :set (_ :guard carrier?)}
+             (mapv (fn [elem] {:name (create-boolname var-id elem)
+                             :elem elem
+                             :var var-id})
+                  (get-sub-type-elems var-id))
+             {:tag :relation :sets ([A B] :seq)}
+             (unroll-variable-as-matrix var-id A B)))
+    (list {:name var-id :elem nil :var var-id})))
 
 (defn get-all-bools
   []
@@ -265,10 +292,6 @@
          _ '()))
      vars)))
 
-(defn pick-bool-var
-  [formulas el-id]
-  (filter (fn [formula] (involves? formula (elem->bools el-id))) formulas))
-
 (defn guard?
   [ir id]
   (match ir
@@ -276,10 +299,6 @@
          {:tag :member :elem (_ :guard #(= % id)) :set _} true
          _ false))
 
-(defn transpose-bitvector
-  [bv]
-  (let [shape (m/shape bv)]
-    (flatten (m/transpose (m/reshape (m/matrix bv) shape)))))
 
 (defn setexpr?
   [expr]

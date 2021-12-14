@@ -1,6 +1,6 @@
 (ns fset.test-machines
   (:require
-   [lisb.translation.util :refer [b->ir]]))
+   [lisb.translation.util :refer [b->ir ir->b]]))
 
 (def empty-ir {:tag :machine, :clauses '(), :name :Empty})
 
@@ -8,7 +8,7 @@
 
 (def numbers (b->ir (slurp "resources/test/Numbers.mch")))
 
-(def scheduler-transformed (read-string (slurp "resources/test/scheduler-ir.edn")))
+(def scheduler-transformed (b->ir (ir->b (read-string (slurp "resources/test/scheduler-ir.edn")))))
 
 (def banking (b->ir (slurp "resources/test/Banking.mch")))
 

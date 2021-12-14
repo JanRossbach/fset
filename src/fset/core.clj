@@ -21,7 +21,7 @@
            (catch Exception e
              (if cfg/logging
                (do
-                 (pprint "Kontext: Assignment ")
+                 (pprint "Context: Assignment")
                  (print-throwable e)
                  (println)
                  (println))
@@ -76,7 +76,7 @@
 (defn unroll-clause
   [c]
   (match c
-    {:tag :variables :values v} {:tag :variables :values (map :name (mapcat b/unroll-variable v))}
+    {:tag :variables :values v} {:tag :variables :values (map :name (mapcat (comp flatten b/unroll-variable) v))}
     {:tag :invariants :values v} {:tag :invariants :values (filter #(not= % {}) (cons (BOOLDEFS (map :name (b/get-all-bools)))
                                                                                       (boolvars->set v)))}
     {:tag :init :values v} {:tag :init :values (map unroll-sub v)}

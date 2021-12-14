@@ -9,29 +9,45 @@
 
 (defn setexpr->bitvector
   [set-expr]
-  ((fn T [e]
-     (match e
-       #{} (repeat cfg/max-unroll-size FALSE)
-       (enumeration-set :guard set?) (map (fn [e] (if (contains? enumeration-set e) TRUE FALSE)) (b/get-type-elems (first enumeration-set)))
-       {:tag :union :sets ([A B] :seq)} (map (fn [a b] (OR a b)) (T A) (T B))
-       {:tag :intersection :sets ([A B] :seq)} (map (fn [a b] (AND a b)) (T A) (T B))
-       {:tag :difference :sets ([A B] :seq)} (map (fn [a b] (AND a (NOT b))) (T A) (T B))
-       {:tag :unite-sets :set-of-sets ss} (apply map OR (map T ss))
-       {:tag :intersect-sets :set-of-sets ss} (apply map AND (map T ss))
-       {:tag :sub :nums ns} (T {:tag :difference :sets ns})
-       {:tag :integer-set} (list e)
+  (->> ((fn T [e]
+          (match e
+            #{} (repeat cfg/max-unroll-size {:formula FALSE})
+            (enumeration-set :guard set?) (map (fn [e] (if (contains? enumeration-set e) {:formula TRUE :elem e} {:formula FALSE :elem e})) (b/get-type-elems (first enumeration-set)))
+            {:tag :union :sets ([A B] :seq)} (m/emap (fn [a b] {:formula (OR (:formula a) (:formula b))
+                                                                :elem (:elem a)})
+                                                     (T A) (T B))
 
-       ;; Relations
+            {:tag :intersection :sets ([A B] :seq)} (m/emap (fn [a b] {:formula (AND (:formula a) (:formula b))
+                                                                       :elem (:elem a)})
+                                                            (T A) (T B))
 
-       ;{:tag :inverse :rel (r :guard b/finite?)} (b/transpose-bitvector (T r))
-       ;{:tag :image :rel (r :guard b/finite?) :set s} (b/image (T r) s)
+            {:tag :difference :sets ([A B] :seq)} (m/emap (fn [a b] {:formula (AND (:formula a) (NOT (:formula b)))
+                                                                     :elem (:elem a)})
+                                                          (T A) (T B))
+            {:tag :unite-sets :set-of-sets ss} (apply map OR (map T ss))
+            {:tag :intersect-sets :set-of-sets ss} (apply map AND (map T ss))
+            {:tag :sub :nums ns} (T {:tag :difference :sets ns})
 
-       {:tag :comprehension-set} (map (fn [elem] (IN elem e)) (b/get-sub-type-elems e))
-       {:tag :lambda} (map (fn [elem] (IN elem e)) (b/get-sub-type-elems e))
-       (constant :guard b/constant?) (map (fn [elem] (IN elem constant)) (b/get-sub-type-elems constant))
-       (variable :guard b/unrollable-var?) (map =TRUE (map :name (b/unroll-variable variable)))
-       _ (throw (ex-info "Unsupported Expression found!" {:expr set-expr :failed-because e}))))
-   set-expr))
+             ;; Relations
+            {:tag :inverse :rel r} (m/transpose (T r))
+            {:tag :image :rel r :set s} (filter (fn [r] (contains? s) (:elem (first r))) (T r))
+
+            (:or (_ :guard #(and (b/constant? %) (b/unrollable? %))) {:tag (:or :lambda :comprehension-set)})
+            (m/emap (fn [elem] {:formula (IN elem e)
+                                :elem elem})
+                    (b/get-type-elem-matrix e))
+
+            (variable :guard b/variable? b/unrollable?)
+            (m/emap (fn [elem] {:formula (=TRUE (b/create-boolname variable elem))
+                                :elem elem})
+                    (b/get-type-elem-matrix variable))
+
+            _ (throw (ex-info "Unsupported Expression found!" {:expr set-expr :failed-because e}))))
+        set-expr)
+       flatten
+       (sort-by :elem)
+       (map :formula)))
+
 
 (defn intexpr->intexpr
   [intexpr]
@@ -49,4 +65,4 @@
 (def boolvar->set (comp bv->setexpr b/unroll-variable))
 
 (defn boolvars->set [ir]
-  (s/transform [(s/walker b/unrollable-var?)] boolvar->set ir))
+  (s/transform [(s/walker (and b/unrollable? b/variable?))] boolvar->set ir))

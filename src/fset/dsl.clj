@@ -65,7 +65,6 @@
 (defn CARDINALITY [PRED elems]
   (apply b+ (map (fn [e] (IF (PRED e) 1 0)) elems)))
 
-(def mat [[:yA1B1 :yA1B2] [:yA2B1 :yA2B2]])
 
 (defn FUN [elem-matrix]
   (apply band (map (fn [row] (b<= (CARDINALITY (fn [e] (=TRUE e)) row) 1)) elem-matrix)))

@@ -4,7 +4,7 @@
 
 ;; Namespace to set global constants
 
-(def logging nil)
+(def logging true)
 
 (def max-unroll-size 200)
 

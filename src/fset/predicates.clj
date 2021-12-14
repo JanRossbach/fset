@@ -4,8 +4,8 @@
    [clojure.pprint :refer [pprint]]
    [clojure.stacktrace :refer [print-throwable]]
    [clojure.core.match :refer [match]]
-   [fset.expressions :refer [unroll-expression setexpr->bitvector intexpr->intexpr boolvars->set]]
-   [fset.dsl :refer [AND OR <=> NOT TRUE EQUALS => FUN SURJECTIVE INJECTIVE BIJECTIVE TOTAL-FUN]]
+   [fset.expressions :refer [unroll-expression boolvars->set]]
+   [fset.dsl :refer [AND OR <=> NOT =TRUE TRUE EQUALS => FUN SURJECTIVE INJECTIVE BIJECTIVE TOTAL-FUN]]
    [fset.backend :as b]))
 
 (defn unroll-predicate
@@ -40,41 +40,43 @@
 
          ;; Member
          {:tag :member :elem (_ :guard b/set-element?) :set (_ :guard b/type?)} TRUE
-         {:tag :member :elem (el-id :guard b/set-element?) :set (v :guard b/unrollable-var?)} (first (b/pick-bool-var (setexpr->bitvector v) el-id))
+         {:tag :member :elem (el-id :guard b/set-element?) :set (v :guard b/unrollable-var?)} (=TRUE (b/create-boolname v el-id))
 
          ;; Concrete Function Types
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-fn :sets ([A B] :seq)}}
-         (FUN (b/unroll-variable-as-matrix v A B))
+         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-fn :sets ([_ _] :seq)}}
+         (FUN (b/get-type-elem-matrix v))
 
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-fn :sets ([A B] :seq)}}
-         (TOTAL-FUN (b/unroll-variable-as-matrix v A B))
+         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-fn :sets ([_ _] :seq)}}
+         (TOTAL-FUN (b/get-type-elem-matrix v))
 
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-surjection :sets ([A B] :seq)}}
-         (let [em (b/unroll-variable-as-matrix v A B)] (AND (FUN em) (SURJECTIVE em)))
+         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-surjection :sets ([_ _] :seq)}}
+         (let [em (b/get-type-elem-matrix v)] (AND (FUN em) (SURJECTIVE em)))
 
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-surjection :sets ([A B] :seq)}}
-         (let [em (b/unroll-variable-as-matrix v A B)] (AND (TOTAL-FUN em) (SURJECTIVE em)))
+         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-surjection :sets ([_ _] :seq)}}
+         (let [em (b/get-type-elem-matrix v)] (AND (TOTAL-FUN em) (SURJECTIVE em)))
 
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-injection :sets ([A B] :seq)}}
-         (let [em (b/unroll-variable-as-matrix v A B)] (AND (FUN em) (INJECTIVE em)))
+         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-injection :sets ([_ _] :seq)}}
+         (let [em (b/get-type-elem-matrix v)] (AND (FUN em) (INJECTIVE em)))
 
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-injection :sets ([A B] :seq)}}
-         (let [em (b/unroll-variable-as-matrix v A B)] (AND (TOTAL-FUN em) (INJECTIVE em)))
+         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-injection :sets ([_ _] :seq)}}
+         (let [em (b/get-type-elem-matrix v)] (AND (TOTAL-FUN em) (INJECTIVE em)))
 
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-bijection :sets ([A B] :seq)}}
-         (let [em (b/unroll-variable-as-matrix v A B)] (AND (FUN em) (BIJECTIVE em)))
+         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-bijection :sets ([_ _] :seq)}}
+         (let [em (b/get-type-elem-matrix v)] (AND (FUN em) (BIJECTIVE em)))
 
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-bijection :sets ([A B] :seq)}}
-         (let [em (b/unroll-variable-as-matrix v A B)] (AND (TOTAL-FUN em) (BIJECTIVE em)))
+         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-bijection :sets ([_ _] :seq)}}
+         (let [em (b/get-type-elem-matrix v)] (AND (TOTAL-FUN em) (BIJECTIVE em)))
 
          {:tag :member :elem (_ :guard b/unrollable-var?) :set (_ :guard b/type?)} {}
 
+         ;{:tag :member :elem (_ :guard b/set-element?) :set s} '() FIXME Here just pick the specific element in question. Rewrite of pick-bool-var?
+
          ;; Numbers
-         {:tag :equals :left l :right r} {:tag :equals :left (intexpr->intexpr l) :right (intexpr->intexpr r)}
-         {:tag :less-equals :nums ns} {:tag :less-equals :nums (map intexpr->intexpr ns)}
-         {:tag :less :nums ns} {:tag :less :nums (map intexpr->intexpr ns)}
-         {:tag :greater :nums ns} {:tag :greater :nums (map intexpr->intexpr ns)}
-         {:tag :greater-equals :nums ns} {:tag :greater-equals :nums (map intexpr->intexpr ns)}
+         {:tag :equals :left l :right r} {:tag :equals :left (T l) :right (T r)}
+         {:tag :less-equals :nums ns} {:tag :less-equals :nums (map T ns)}
+         {:tag :less :nums ns} {:tag :less :nums (map T ns)}
+         {:tag :greater :nums ns} {:tag :greater :nums (map T ns)}
+         {:tag :greater-equals :nums ns} {:tag :greater-equals :nums (map T ns)}
          expr (unroll-expression expr)))
      pred)
     (catch Exception e
