@@ -5,7 +5,7 @@
    [clojure.stacktrace :refer [print-throwable]]
    [clojure.core.match :refer [match]]
    [fset.expressions :refer [unroll-expression boolvars->set]]
-   [fset.dsl :refer [AND OR <=> NOT =TRUE TRUE EQUALS => FUN SURJECTIVE INJECTIVE BIJECTIVE TOTAL-FUN]]
+   [fset.dsl :refer [AND OR <=> NOT =TRUE TRUE EQUALS => FUN SURJECTIVE INJECTIVE BIJECTIVE TOTAL-FUN BOOL]]
    [fset.backend :as b]))
 
 (defn unroll-predicate
@@ -67,9 +67,7 @@
          {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-bijection :sets ([_ _] :seq)}}
          (let [em (b/get-type-elem-matrix v)] (AND (TOTAL-FUN em) (BIJECTIVE em)))
 
-         {:tag :member :elem (_ :guard b/unrollable-var?) :set (_ :guard b/type?)} {}
-
-         {:tag :member :elem (elem :guard b/set-element?) :set s} (=TRUE (nth (T s) (b/get-elem-index elem)))
+         {:tag :member :elem (elem :guard b/set-element?) :set s} (=TRUE (BOOL (nth (T s) (b/get-elem-index elem))))
 
          ;; Numbers
          {:tag :equals :left l :right r} {:tag :equals :left (T l) :right (T r)}
@@ -77,6 +75,7 @@
          {:tag :less :nums ns} {:tag :less :nums (map T ns)}
          {:tag :greater :nums ns} {:tag :greater :nums (map T ns)}
          {:tag :greater-equals :nums ns} {:tag :greater-equals :nums (map T ns)}
+
          expr (unroll-expression expr)))
      pred)
     (catch Exception e
