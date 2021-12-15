@@ -69,7 +69,7 @@
 
          {:tag :member :elem (_ :guard b/unrollable-var?) :set (_ :guard b/type?)} {}
 
-         ;{:tag :member :elem (_ :guard b/set-element?) :set s} '() FIXME Here just pick the specific element in question. Rewrite of pick-bool-var?
+         {:tag :member :elem (elem :guard b/set-element?) :set s} (=TRUE (nth (T s) (b/get-elem-index elem)))
 
          ;; Numbers
          {:tag :equals :left l :right r} {:tag :equals :left (T l) :right (T r)}

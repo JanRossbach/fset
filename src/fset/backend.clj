@@ -307,6 +307,9 @@
       (= T "INTEGER") false
       :else true)))
 
+(defn get-elem-index [elem-id]
+  (first (first (filter #(= (second %) elem-id) (map-indexed vector (get-type-elems elem-id))))))
+
 (defn intexpr?
   [expr]
   (= "INTEGER" (get-type expr)))
