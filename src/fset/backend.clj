@@ -248,7 +248,7 @@
 (defn unrollable-var?
   [id]
   (and (variable? id)
-       (finite? id)))
+       (unrollable? id)))
 
 (defn unroll-variable-as-matrix
   [var-id rdom rran]

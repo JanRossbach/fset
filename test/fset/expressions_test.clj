@@ -3,7 +3,7 @@
    [fset.backend :as b]
    [clojure.test :refer [deftest is]]
    [fset.test-machines :refer [train]]
-   [fset.expressions :refer [unroll-expression]]))
+   [fset.expressions :refer [unroll-expression bmmul]]))
 
 (def image-expr {:tag :image, :rel {:tag :inverse, :rel :rtbl}, :set #{:R1}})
 (def ran-expr  {:tag :difference, :sets (:resrt {:tag :ran, :rel :rsrtbl})})
@@ -14,6 +14,12 @@
 (def fncall-expr-target {})
 
 (b/setup-backend train)
+
+(def inverse-rtbl (unroll-expression {:tag :inverse :rel :rtbl}))
+
+(def R1-set (unroll-expression #{:R1}))
+
+
 
 
 (deftest train-relation-expressions-test

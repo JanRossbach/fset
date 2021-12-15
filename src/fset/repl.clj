@@ -15,6 +15,8 @@
 
 (def scheduler-auto-ir (fset/boolencode scheduler-ir))
 
+(ir->b scheduler-auto-ir)
+
 (def numbers-ir (b->ir (slurp "resources/test/Numbers.mch")))
 
 (b/model-check (b->ir (ir->b (fset/boolencode scheduler-ir))))
@@ -40,6 +42,8 @@
 
 (def train-ir-auto (fset/boolencode train-ir))
 
+(pprint train-ir-auto)
+
 (ir->b (fset/boolencode train-ir))
 
 (spit "resources/machines/b/target/train_auto1.mch" (ir->b train-ir-auto))
@@ -50,6 +54,8 @@
   (count (filter (fn [b] (= (:var b) var)) (b/get-all-bools))))
 
 (b/setup-backend train-ir)
+
+(b/unrollable-var? :TRK)
 
 (b/unroll-variable :frm)
 
