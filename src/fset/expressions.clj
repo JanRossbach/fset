@@ -36,6 +36,7 @@
             (enumeration-set :guard set?)
             (vector (mapv (fn [e] (if (contains? enumeration-set e) TRUE FALSE)) (b/get-type-elems (first enumeration-set))))
 
+            ;; Operators
             {:tag :union :sets ([A B] :seq)} (bmadd (T A) (T B))
             {:tag :intersection :sets ([A B] :seq)} (bemul (T A) (T B))
             {:tag :difference :sets ([A B] :seq)} (bmdiff (T A) (T B))
@@ -46,12 +47,18 @@
              ;; Relations
             {:tag :inverse :rel r} (bmtranspose (T r))
             {:tag :image :rel r :set s} (bmmul (T s) (T r))
+            {:tag :dom :rel r} (vector (mapv (fn [row] (apply OR row)) (T r)))
+            {:tag :ran :rel r} (T {:tag :dom :rel {:tag :inverse :rel r}})
 
-            (:or (_ :guard #(and (b/constant? %) (b/unrollable? %))) {:tag (:or :lambda :comprehension-set)})
-            (bemap (fn [elem] (IN elem e)) (b/get-type-elem-matrix e))
-
-            (variable :guard b/variable? b/unrollable?)
+            ;; Variables
+            (variable :guard b/unrollable-var?)
             (bemap (fn [elem] (=TRUE (b/create-boolname variable elem))) (b/get-type-elem-matrix variable))
+
+            ;; Other Expressions defining sets
+            (:or (_ :guard #(and (b/constant? %) (b/unrollable? %)))
+                 {:tag (:or :lambda :comprehension-set)}
+                 (_ :guard #(and (b/variable? %) (not (b/unrollable-var? %)))))
+            (bemap (fn [elem] (IN elem e)) (b/get-type-elem-matrix e))
 
             _ (throw (ex-info "Unsupported Expression found!" {:expr set-expr :failed-because e}))))
         set-expr)
