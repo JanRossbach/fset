@@ -22,7 +22,7 @@
 
 (defn bmmul [a b]
   (let [nested-for (fn [f x y] (mapv (fn [a] (mapv (fn [b] (f a b)) y)) x))]
-    (nested-for (fn [x y] (reduce OR (mapv AND x y))) a (bmtranspose b))))
+    (nested-for (fn [x y] (apply OR (mapv AND x y))) a (bmtranspose b))))
 
 (defn bemap [f & bms]
   (apply mapv (fn [& rows] (apply mapv (fn [& elems] (apply f elems)) rows)) bms))
@@ -31,8 +31,11 @@
   [set-expr]
   (->> ((fn T [e]
           (match e
-            #{} (bemap (fn [_] FALSE) (b/get-type-elem-matrix set-expr))
-            (enumeration-set :guard set?) (vector (mapv (fn [e] (if (contains? enumeration-set e) TRUE FALSE)) (b/get-type-elems (first enumeration-set))))
+            #{} (repeat cfg/max-unroll-size FALSE)
+
+            (enumeration-set :guard set?)
+            (vector (mapv (fn [e] (if (contains? enumeration-set e) TRUE FALSE)) (b/get-type-elems (first enumeration-set))))
+
             {:tag :union :sets ([A B] :seq)} (bmadd (T A) (T B))
             {:tag :intersection :sets ([A B] :seq)} (bemul (T A) (T B))
             {:tag :difference :sets ([A B] :seq)} (bmdiff (T A) (T B))
@@ -42,7 +45,7 @@
 
              ;; Relations
             {:tag :inverse :rel r} (bmtranspose (T r))
-            {:tag :image :rel r :set s} (bmmul (T r) (T s))
+            {:tag :image :rel r :set s} (bmmul (T s) (T r))
 
             (:or (_ :guard #(and (b/constant? %) (b/unrollable? %))) {:tag (:or :lambda :comprehension-set)})
             (bemap (fn [elem] (IN elem e)) (b/get-type-elem-matrix e))
