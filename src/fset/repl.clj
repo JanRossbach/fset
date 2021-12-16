@@ -15,15 +15,17 @@
 
 (def scheduler-auto-ir (fset/boolencode scheduler-ir))
 
+(pprint scheduler-auto-ir)
+
 (ir->b scheduler-auto-ir)
 
 (def numbers-ir (b->ir (slurp "resources/test/Numbers.mch")))
 
 (b/model-check (b->ir (ir->b (fset/boolencode scheduler-ir))))
 
-
-
 (b/setup-backend scheduler-ir)
+
+(b/get-elem-index :PID3)
 
 (unroll-expression :active)
 
@@ -42,16 +44,55 @@
 
 (def train-ir-auto (fset/boolencode train-ir))
 
+(b/setup-backend train-ir)
+
+(def c (set (first (b/eval-constant :fst))))
+
+
+
+(pprint (map (fn [elem] (if (contains? c elem) :true :false)) (b/get-sub-type-elems :fst)))
+
+
+
+(b/get-type :rsrtbl)
+
+
+(pprint (unroll-expression :rsrtbl))
+
+
+
+
+
+
+
+
+
+
+()
+
+
+
+
+
+
+
+
+
+
+
+train-ir-auto
+
+(pprint "---------------------------")
+
 (pprint train-ir-auto)
+
+(ir->b train-ir-auto)
 
 (ir->b (fset/boolencode train-ir))
 
 (spit "resources/machines/b/target/train_auto1.mch" (ir->b train-ir-auto))
 
 (pprint train-ir-auto)
-
-(defn boolcount [var]
-  (count (filter (fn [b] (= (:var b) var)) (b/get-all-bools))))
 
 (b/setup-backend train-ir)
 
@@ -64,5 +105,3 @@
 (ir->b train-ir-auto)
 
 (pprint train-ir-auto)
-
-(b/setup-backend scheduler-ir)

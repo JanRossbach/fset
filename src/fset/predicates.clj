@@ -1,12 +1,11 @@
 (ns fset.predicates
   (:require
    [fset.config :as cfg]
-   [clojure.pprint :refer [pprint]]
-   [clojure.stacktrace :refer [print-throwable]]
    [clojure.core.match :refer [match]]
    [fset.expressions :refer [unroll-expression boolvars->set]]
    [fset.dsl :refer [AND OR <=> NOT =TRUE TRUE EQUALS => FUN SURJECTIVE INJECTIVE BIJECTIVE TOTAL-FUN BOOL]]
    [fset.backend :as b]))
+
 
 (defn unroll-predicate
   [pred]
@@ -32,15 +31,15 @@
          ;; Quantifiers
          {:tag :for-all :ids ids :implication {:tag :implication :preds ([P Q] :seq)}}
          (apply AND (map (fn [binding] (=> (T (b/apply-binding P binding))
-                                           (T (b/apply-binding Q binding))))
+                                          (T (b/apply-binding Q binding))))
                          (b/ids->bindings P ids)))
 
          {:tag :exists :ids ids :pred P}
-         (apply AND (map (fn [binding] (T (b/apply-binding P binding))) (b/ids->bindings ids)))
+         (apply AND (map (fn [binding] (T (b/apply-binding P binding))) (b/ids->bindings P ids)))
 
          ;; Member
-         {:tag :member :elem (_ :guard b/set-element?) :set (_ :guard b/type?)} TRUE
-         {:tag :member :elem (el-id :guard b/set-element?) :set (v :guard b/unrollable-var?)} (=TRUE (b/create-boolname v el-id))
+         {:tag :member :elem {:tag :fn-call :f f :args ([(arg :guard b/set-element?)] :seq)} :set S} (T {:tag :subset :sets (list {:tag :image :rel f :set #{arg}} S)})
+         {:tag :member :elem (elem :guard b/set-element?) :set s} (=TRUE (BOOL (nth (T s) (b/get-elem-index elem))))
 
          ;; Concrete Function Types
          {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-fn :sets ([_ _] :seq)}}
@@ -67,8 +66,6 @@
          {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-bijection :sets ([_ _] :seq)}}
          (let [em (b/get-type-elem-matrix v)] (AND (TOTAL-FUN em) (BIJECTIVE em)))
 
-         {:tag :member :elem (elem :guard b/set-element?) :set s} (=TRUE (BOOL (nth (T s) (b/get-elem-index elem))))
-
          ;; Numbers
          {:tag :equals :left l :right r} {:tag :equals :left (T l) :right (T r)}
          {:tag :less-equals :nums ns} {:tag :less-equals :nums (map T ns)}
@@ -79,11 +76,5 @@
          expr (unroll-expression expr)))
      pred)
     (catch Exception e
-      (if cfg/logging
-        (do
-          (pprint "Kontext: Predicate ")
-          (print-throwable e)
-          (println)
-          (println))
-        nil)
+      (cfg/log e)
       (boolvars->set pred))))

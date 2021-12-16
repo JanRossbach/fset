@@ -29,40 +29,48 @@
 
 (defn setexpr->bitvector
   [set-expr]
-  (->> ((fn T [e]
-          (match e
-            #{} (repeat cfg/max-unroll-size FALSE)
+  (flatten
+   ((fn T [e]
+      (match e
+        #{} (repeat cfg/max-unroll-size FALSE)
+        (_ :guard b/carrier?) (repeat cfg/max-unroll-size TRUE)
 
-            (enumeration-set :guard set?)
-            (vector (mapv (fn [e] (if (contains? enumeration-set e) TRUE FALSE)) (b/get-type-elems (first enumeration-set))))
+        (enumeration-set :guard set?)
+        (vector (mapv (fn [e] (if (contains? enumeration-set e) TRUE FALSE)) (b/get-type-elems (first enumeration-set))))
 
             ;; Operators
-            {:tag :union :sets ([A B] :seq)} (bmadd (T A) (T B))
-            {:tag :intersection :sets ([A B] :seq)} (bemul (T A) (T B))
-            {:tag :difference :sets ([A B] :seq)} (bmdiff (T A) (T B))
-            {:tag :unite-sets :set-of-sets ss} (apply bmadd (map T ss))
-            {:tag :intersect-sets :set-of-sets ss} (apply bemul (map T ss))
-            {:tag :sub :nums ns} (T {:tag :difference :sets ns})
+        {:tag :union :sets ([A B] :seq)} (bmadd (T A) (T B))
+        {:tag :intersection :sets ([A B] :seq)} (bemul (T A) (T B))
+        {:tag :difference :sets ([A B] :seq)} (bmdiff (T A) (T B))
+        {:tag :unite-sets :set-of-sets ss} (apply bmadd (map T ss))
+        {:tag :intersect-sets :set-of-sets ss} (apply bemul (map T ss))
+        {:tag :sub :nums ns} (T {:tag :difference :sets ns})
 
              ;; Relations
-            {:tag :inverse :rel r} (bmtranspose (T r))
-            {:tag :image :rel r :set s} (bmmul (T s) (T r))
-            {:tag :dom :rel r} (vector (mapv (fn [row] (apply OR row)) (T r)))
-            {:tag :ran :rel r} (T {:tag :dom :rel {:tag :inverse :rel r}})
+        {:tag :inverse :rel r} (bmtranspose (T r))
+        {:tag :image :rel r :set s} (bmmul (T s) (T r))
+        ;{:tag :fn-call :f f :args args} (T {:tag :image :rel f :set (set args)})
+        {:tag :dom :rel r} (vector (mapv (fn [row] (apply OR row)) (T r)))
+        {:tag :ran :rel r} (T {:tag :dom :rel {:tag :inverse :rel r}})
+        {:tag :domain-restriction :set s :rel r} (mapv (fn [el row] (mapv (fn [elem] (AND el elem)) row)) (first (T s)) (T r))
+        {:tag :range-restriction :set s :rel r} (bmtranspose (T {:tag :domain-restriction :set s :rel {:tag :inverse :rel r}}))
 
             ;; Variables
-            (variable :guard b/unrollable-var?)
-            (bemap (fn [elem] (=TRUE (b/create-boolname variable elem))) (b/get-type-elem-matrix variable))
+        (variable :guard b/unrollable-var?)
+        (bemap (fn [elem] (=TRUE (b/create-boolname variable elem))) (b/get-type-elem-matrix variable))
 
-            ;; Other Expressions defining sets
-            (:or (_ :guard #(and (b/constant? %) (b/unrollable? %)))
-                 {:tag (:or :lambda :comprehension-set)}
-                 (_ :guard #(and (b/variable? %) (not (b/unrollable-var? %)))))
-            (bemap (fn [elem] (IN elem e)) (b/get-type-elem-matrix e))
+        (c :guard #(and cfg/unroll-constants (b/constant? %) (b/unrollable? %)))
+        (bemap (fn [elem] (if (contains? (b/eval-constant c) elem) TRUE FALSE)) (b/get-type-elem-matrix c)) ; FIXME Super slow :/
 
-            _ (throw (ex-info "Unsupported Expression found!" {:expr set-expr :failed-because e}))))
-        set-expr)
-       flatten))
+        ;; Other Expressions defining sets
+        (:or
+         (_ :guard #(and (b/constant? %) (b/unrollable? %)))
+         {:tag (:or :lambda :comprehension-set)}
+         (_ :guard #(and (b/variable? %) (not (b/unrollable-var? %)))))
+        (bemap (fn [elem] (IN elem e)) (b/get-type-elem-matrix e))
+
+        _ (throw (ex-info "Unsupported Expression found!" {:expr set-expr :failed-because e}))))
+    set-expr)))
 
 
 (defn intexpr->intexpr

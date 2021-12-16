@@ -1,8 +1,9 @@
 (ns fset.expressions-test
   (:require
+   [clojure.core.matrix :as m]
    [fset.backend :as b]
    [clojure.test :refer [deftest is]]
-   [fset.test-machines :refer [train]]
+   [fset.test-machines :refer [train scheduler]]
    [fset.expressions :refer [unroll-expression bmmul]]))
 
 (def image-expr {:tag :image, :rel {:tag :inverse, :rel :rtbl}, :set #{:R1}})
@@ -13,11 +14,9 @@
 (def ran-expr-target {})
 (def fncall-expr-target {})
 
-(b/setup-backend train)
+(b/setup-backend scheduler)
 
-(def inverse-rtbl (unroll-expression {:tag :inverse :rel :rtbl}))
-
-(def R1-set (unroll-expression #{:R1}))
+(unroll-expression :PID)
 
 
 

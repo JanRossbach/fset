@@ -13,6 +13,7 @@
 (unroll-predicate member-scheduler-expr)
 
 
-(def member-train-expr {:tag :member, :elem :B, :set :OCC})
+(def member-train-expr {:tag :member, :elem :R7, :set {:tag :difference :sets (list :resrt :frm)}})
 
-(unroll-predicate member-train-expr)
+
+(clojure.pprint/pprint (fset.simplify/simplify-all (unroll-predicate {:tag :member, :elem {:tag :fn-call, :f :fst, :args (list :R10)}, :set {:tag :difference, :sets (list :resbl :OCC)}})))

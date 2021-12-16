@@ -1,14 +1,13 @@
 (ns fset.core
   (:require
    [fset.config :as cfg]
-   [clojure.stacktrace :refer [print-throwable]]
-   [clojure.pprint :refer [pprint]]
    [fset.dsl :refer [MACHINE AND BOOL BOOLDEFS ASSIGN AND IN]]
    [fset.expressions :refer [unroll-expression boolvars->set]]
    [clojure.core.match :refer [match]]
    [fset.predicates :refer [unroll-predicate]]
    [fset.simplify :refer [simplify-all]]
    [fset.backend :as b]))
+
 
 (defn unroll-id-val
   [[id val]]
@@ -19,13 +18,7 @@
                   (map :name uvar)
                   uexpr))
            (catch Exception e
-             (if cfg/logging
-               (do
-                 (pprint "Context: Assignment")
-                 (print-throwable e)
-                 (println)
-                 (println))
-               nil)
+             (cfg/log e)
              (map (fn [v p] (ASSIGN v (BOOL p)))
                   (map :name uvar)
                   (map (fn [v] (IN (:elem v) (boolvars->set val))) uvar)))))

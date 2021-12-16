@@ -149,7 +149,7 @@
      :preds (concat props invars)}))
 
 (defn eval-constant [c]
-  (comprehend [:x] (bexists (get-constants) (band (b= :x c) (get-props-as-pred)))))
+  (set (first (comprehend [:x] (bexists (get-constants) (band (b= :x c) (get-props-as-pred)))))))
 
 (defn- involves?
   [ir ids]
