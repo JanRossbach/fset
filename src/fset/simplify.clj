@@ -17,15 +17,16 @@
     {:tag :and :preds (ps :guard #(= 1 (count %)))} (first ps)
     {:tag :and :preds (_ :guard (fn [ps] (some #(= % FALSE) ps)))} FALSE
     {:tag :or :preds (_ :guard (fn [ps] (some #(= % TRUE) ps)))} TRUE
-    {:tag :and :preds (ps :guard (fn [ps] (some #(= % TRUE) ps)))} {:tag :and :preds (filter #(not= % TRUE) ps)}
-    {:tag :or :preds (ps :guard (fn [ps] (some #(= % FALSE) ps)))} {:tag :or :preds (filter #(not= % FALSE) ps)}
+    {:tag :and :preds (ps :guard (fn [ps] (some #(= % TRUE) ps)))} (let [nps (filter #(not= % TRUE) ps)] (if (empty? nps) TRUE {:tag :and :preds nps}))
+    {:tag :or :preds (ps :guard (fn [ps] (some #(= % FALSE) ps)))} (let [nps (filter #(not= % FALSE) ps)] (if (empty? nps) FALSE {:tag :or :preds nps}))
     {:tag :equals :left {:tag :pred->bool :pred p} :right :TRUE} p
     {:tag :assignment :id-vals ([a {:tag :pred->bool :pred {:tag :equals :left b :right :TRUE}}] :seq)} (if (= a b) s/NONE nil)
-    {:tag :pred->bool :pred (nonpred :guard #(not (b/predicate? %)))} nonpred
+    ;{:tag :pred->bool :pred (nonpred :guard #(not (b/predicate? %)))} nonpred
     {:tag :parallel-sub :subs (substitutions :guard #(= (count %) 1))} (first substitutions)
     {:tag :parallel-sub :subs (_ :guard empty?)} s/NONE
     {:tag :select :clauses ([outer-guard {:tag :select :clauses ([inner-guard & r] :seq)}] :seq)} {:tag :select :clauses (cons (AND outer-guard inner-guard) r)}
     {:tag :implication :preds ([(_ :guard #(= % TRUE)) B] :seq)} B
+    {:tag :implication :preds ([(_ :guard #(= % FALSE)) _] :seq)} TRUE
     _ nil))
 
 (defn- simplify-ir

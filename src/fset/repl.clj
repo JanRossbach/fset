@@ -3,6 +3,8 @@
    [clojure.pprint :refer [pprint]]
    [fset.dsl :as dsl]
    [fset.expressions :refer [unroll-expression]]
+   [fset.predicates :refer [unroll-predicate]]
+   [fset.simplify :refer [simplify-all]]
    [fset.core :as fset]
    [fset.backend :as b]
    [lisb.translation.util :refer [b->ir ir->b]]))
@@ -43,6 +45,51 @@
 (def train-ir (b->ir (slurp "resources/machines/b/source/Train_1_beebook_TLC.mch")))
 
 (def train-ir-auto (fset/boolencode train-ir))
+
+(ir->b train-ir-auto)
+
+train-ir-auto
+
+
+(b/unrollable-var? :TRK)
+
+(b/unroll-variable :TRK)
+
+
+(pprint train-ir-auto)
+
+(pprint (fset.simplify/simplify-all (unroll-predicate {:tag :member :elem {:tag :fn-call :f :fst :args '(:R9)} :set {:tag :difference
+                                                                                                                     :sets '(:resbl :OCC)}})))
+
+(spit "resources/machines/b/target/train_auto1.mch" (ir->b train-ir-auto))
+
+(unroll-predicate {:tag :and, :preds '({:tag :member, :elem :R10, :set :frm} {:tag :member, :elem {:tag :fn-call, :f :fst, :args (:R10)}, :set {:tag :difference, :sets (:resbl :OCC)}}
+                                       {:tag :equals, :left {:tag :fn-call, :f :rsrtbl, :args ({:tag :fn-call, :f :fst, :args (:R10)})}, :right :R10})})
+
+(unroll-predicate {:tag :member :elem :R10 :set :frm})
+
+(pprint (fset.simplify/simplify-all (unroll-predicate {:tag :equals, :left {:tag :fn-call, :f :rsrtbl, :args '({:tag :fn-call, :f :fst, :args (:R10)})}, :right :R10})))
+
+
+
+(pprint (fset.simplify/simplify-all (unroll-predicate {:tag :domain-restriction
+                                                       :set
+                                                       {:tag :image
+                                                        :rel {:tag :inverse :rel :rsrtbl}
+                                                        :set #{:R1}}
+                                                       :rel :TRK})))
+
+(pprint train-ir)
+
+
+(unroll-expression {:tag :union :sets (list :LBT #{{:tag :fn-call :f :fst :args (list :R1)}})})
+
+(unroll-expression {:tag :fn-call, :f :rsrtbl, :args '({:tag :fn-call, :f :fst, :args (:R10)})})
+
+(b/get-type :LBT)
+
+
+(pprint (fset.simplify/simplify-all (unroll-expression {:tag :fn-call, :f :fst, :args (list :R8)})))
 
 (b/setup-backend train-ir)
 
@@ -90,7 +137,8 @@ train-ir-auto
 
 (ir->b (fset/boolencode train-ir))
 
-(spit "resources/machines/b/target/train_auto1.mch" (ir->b train-ir-auto))
+
+(unroll-predicate {:tag :member :elem {:tag :fn-call :f :fst :args '(:R1)} :set {:tag :difference :sets '(:resbl :OCC)}})
 
 (pprint train-ir-auto)
 
@@ -105,3 +153,18 @@ train-ir-auto
 (ir->b train-ir-auto)
 
 (pprint train-ir-auto)
+
+(pprint (simplify-all (fset/unroll-sub {:tag :assignment :id-vals '(:OCC {:tag :union :sets (:OCC #{{:tag :fn-call :f :fst :args (:R1)}})})})))
+
+(count (simplify-all (unroll-expression #{{:tag :fn-call :f :fst :args '(:R1)}})))
+
+
+
+
+
+
+(def uexpr (unroll-expression {:tag :fn-call :f :fst :args '(:R1)}))
+
+
+
+(def enumeration-set #{{:tag :fn-call :f :fst :args '(:R1)}})

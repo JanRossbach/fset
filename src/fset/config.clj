@@ -9,20 +9,25 @@
 
 (def max-unroll-size 200)
 
-(def unroll-constants false) ; Causes severe Performance loss, but can yield a simpler result in the end
+(def eval-constants true)
 
 (def deff-set-size 2)
 
 (def train-vars #{:LBT :TRK :frm :OCC :resbl :resrt :rsrtbl})
 
-(def train-vars-allowed #{:frm :resrt :resbl})
+(def train-vars-allowed #{:frm :resrt :resbl :LBT :OCC})
 
 (def excluded-vars (difference train-vars train-vars-allowed))
 
-(defn log [e]
+
+excluded-vars
+
+
+(defn log [e context]
   (if logging
     (do
-      (pprint "Context: Assignment")
+      (pprint "Context: ")
+      (pprint context)
       (print-throwable e)
       (println)
       (println))

@@ -32,11 +32,15 @@
   (flatten
    ((fn T [e]
       (match e
+        (elem :guard b/set-element?) (T #{elem})
         #{} (repeat cfg/max-unroll-size FALSE)
         (_ :guard b/carrier?) (repeat cfg/max-unroll-size TRUE)
 
-        (enumeration-set :guard set?)
-        (vector (mapv (fn [e] (if (contains? enumeration-set e) TRUE FALSE)) (b/get-type-elems (first enumeration-set))))
+        (enumeration-set :guard #(and (set? %) (every? b/set-element? %)))
+        (vector (mapv (fn [el] (if (contains? enumeration-set el) TRUE FALSE)) (b/get-type-elems (first enumeration-set))))
+
+        (enumeration-set :guard #(and (set? %) (= 1 (count %)) (every? b/fn-call? %)))
+        (T (first enumeration-set)) ;; FIXME HAck ...
 
             ;; Operators
         {:tag :union :sets ([A B] :seq)} (bmadd (T A) (T B))
@@ -49,7 +53,8 @@
              ;; Relations
         {:tag :inverse :rel r} (bmtranspose (T r))
         {:tag :image :rel r :set s} (bmmul (T s) (T r))
-        ;{:tag :fn-call :f f :args args} (T {:tag :image :rel f :set (set args)})
+        {:tag :fn-call :f f :args ([(args :guard b/set-element?)] :seq)} (T {:tag :image :rel f :set #{args}})
+        {:tag :fn-call :f f :args ([args] :seq)} (T {:tag :image :rel f :set args})
         {:tag :dom :rel r} (vector (mapv (fn [row] (apply OR row)) (T r)))
         {:tag :ran :rel r} (T {:tag :dom :rel {:tag :inverse :rel r}})
         {:tag :domain-restriction :set s :rel r} (mapv (fn [el row] (mapv (fn [elem] (AND el elem)) row)) (first (T s)) (T r))
@@ -59,8 +64,8 @@
         (variable :guard b/unrollable-var?)
         (bemap (fn [elem] (=TRUE (b/create-boolname variable elem))) (b/get-type-elem-matrix variable))
 
-        (c :guard #(and cfg/unroll-constants (b/constant? %) (b/unrollable? %)))
-        (bemap (fn [elem] (if (contains? (b/eval-constant c) elem) TRUE FALSE)) (b/get-type-elem-matrix c)) ; FIXME Super slow :/
+        (c :guard #(and cfg/eval-constants (b/constant? %) (b/unrollable? %)))
+        (let [ec (b/eval-constant c)] (bemap (fn [elem] (if (contains? ec elem) TRUE FALSE)) (b/get-type-elem-matrix c)))
 
         ;; Other Expressions defining sets
         (:or
@@ -71,7 +76,6 @@
 
         _ (throw (ex-info "Unsupported Expression found!" {:expr set-expr :failed-because e}))))
     set-expr)))
-
 
 (defn intexpr->intexpr
   [intexpr]

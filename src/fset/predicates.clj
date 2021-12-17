@@ -15,12 +15,14 @@
          ;; equalsity
          {:tag :equals :left l :right #{}} (apply AND (map NOT (T l)))
          {:tag :equals :left #{} :right r} (apply AND (map NOT (T r)))
-         {:tag :equals :left (l :guard b/setexpr?) :right (r :guard b/setexpr?)}  (apply AND (map <=> (T l) (T r)))
+
          {:tag :not-equals :left l :right r} (NOT (T (EQUALS l r)))
          {:tag :subset :sets ([(_ :guard b/unrollable-var?) (_ :guard b/type?)] :seq)} {} ;; An empty map just means delete this thing
          {:tag :subset :sets ([s S] :seq)} (apply AND (map (fn [a b] (=> a b)) (T s) (T S)))
          {:tag :subset-strict :subset s :set S} (let [Ts (T s) TS (T S)] (apply AND (cons (apply OR (map (fn [a b] (AND a (NOT b))) Ts TS))
                                                                                           (map (fn [a b] (=> a b)) Ts TS))))
+
+         {:tag :equals :left (l :guard b/setexpr?) :right (r :guard b/setexpr?)}  (apply AND (map <=> (T l) (T r)))
          ;; logical operators
          {:tag :and :preds ps} (apply AND (map T ps))
          {:tag :or :preds ps} (apply OR (map T ps))
@@ -31,7 +33,7 @@
          ;; Quantifiers
          {:tag :for-all :ids ids :implication {:tag :implication :preds ([P Q] :seq)}}
          (apply AND (map (fn [binding] (=> (T (b/apply-binding P binding))
-                                          (T (b/apply-binding Q binding))))
+                                           (T (b/apply-binding Q binding))))
                          (b/ids->bindings P ids)))
 
          {:tag :exists :ids ids :pred P}
@@ -76,5 +78,5 @@
          expr (unroll-expression expr)))
      pred)
     (catch Exception e
-      (cfg/log e)
+      (cfg/log e pred)
       (boolvars->set pred))))

@@ -54,12 +54,11 @@
   (seq (s/select [CONSTANTS s/ALL #(= % id)] (:ir @db))))
 
 (def get-type
-  (memoize
    (fn [formula]
      (let [ss (:ss @db)
            formula-ast (ir->ast formula)
            ee (ClassicalB. formula-ast FormulaExpand/TRUNCATE "")]
-       (.getType (.typeCheck ss ee))))))
+       (.getType (.typeCheck ss ee)))))
 
 (def get-statespace
   (memoize (fn [ir] (state-space! (ir->ast ir)))))
@@ -250,6 +249,12 @@
   (and (variable? id)
        (unrollable? id)))
 
+(defn fn-call?
+  [expr]
+  (match expr
+         {:tag :fn-call} :true
+         _ :false))
+
 (defn unroll-variable-as-matrix
   [var-id rdom rran]
   (let [dom-elems (get-sub-type-elems rdom)
@@ -264,14 +269,14 @@
   [var-id]
   (if (unrollable? var-id)
     (let [TIR (get-type-ir var-id)]
-      (match TIR
-             {:tag :power-set :set (_ :guard carrier?)}
-             (mapv (fn [elem] {:name (create-boolname var-id elem)
-                             :elem elem
-                             :var var-id})
-                  (get-sub-type-elems var-id))
-             {:tag :relation :sets ([A B] :seq)}
-             (unroll-variable-as-matrix var-id A B)))
+      (flatten (match TIR
+                 {:tag :power-set :set (_ :guard carrier?)}
+                 (mapv (fn [elem] {:name (create-boolname var-id elem)
+                                   :elem elem
+                                   :var var-id})
+                       (get-sub-type-elems var-id))
+                 {:tag :relation :sets ([A B] :seq)}
+                 (unroll-variable-as-matrix var-id A B))))
     (list {:name var-id :elem nil :var var-id})))
 
 (defn get-all-bools

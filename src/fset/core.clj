@@ -18,11 +18,12 @@
                   (map :name uvar)
                   uexpr))
            (catch Exception e
-             (cfg/log e)
+             (cfg/log e (str "Assignment to value: " val))
              (map (fn [v p] (ASSIGN v (BOOL p)))
                   (map :name uvar)
                   (map (fn [v] (IN (:elem v) (boolvars->set val))) uvar)))))
     (list (ASSIGN id (boolvars->set val)))))
+
 
 (defn unroll-sub
   [sub]
@@ -69,7 +70,7 @@
 (defn unroll-clause
   [c]
   (match c
-    {:tag :variables :values v} {:tag :variables :values (map :name (mapcat (comp flatten b/unroll-variable) v))}
+    {:tag :variables :values v} {:tag :variables :values (map :name (mapcat b/unroll-variable v))}
     {:tag :invariants :values v} {:tag :invariants :values (filter #(not= % {}) (cons (BOOLDEFS (map :name (b/get-all-bools)))
                                                                                       (boolvars->set v)))}
     {:tag :init :values v} {:tag :init :values (map unroll-sub v)}
