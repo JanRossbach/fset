@@ -72,7 +72,7 @@
   (match c
     {:tag :variables :values v} {:tag :variables :values (map :name (mapcat b/unroll-variable v))}
     {:tag :invariants :values v} {:tag :invariants :values (filter #(not= % {}) (cons (BOOLDEFS (map :name (b/get-all-bools)))
-                                                                                      (boolvars->set v)))}
+                                                                                      (if cfg/unroll-invariant (map unroll-predicate v) (boolvars->set v))))}
     {:tag :init :values v} {:tag :init :values (map unroll-sub v)}
     {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation v)}
     {:tag :assertions :values v} {:tag :assertions :values (boolvars->set v)}

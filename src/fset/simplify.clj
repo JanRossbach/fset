@@ -27,6 +27,12 @@
     {:tag :select :clauses ([outer-guard {:tag :select :clauses ([inner-guard & r] :seq)}] :seq)} {:tag :select :clauses (cons (AND outer-guard inner-guard) r)}
     {:tag :implication :preds ([(_ :guard #(= % TRUE)) B] :seq)} B
     {:tag :implication :preds ([(_ :guard #(= % FALSE)) _] :seq)} TRUE
+    {:tag :implication :preds ([_ (_ :guard #(= % TRUE))] :seq)} TRUE
+    {:tag :implication :preds ([A (_ :guard #(= % FALSE))] :seq)} A
+    {:tag :equivalence :preds ([(_ :guard #(= % FALSE)) (_ :guard #(= % FALSE))] :seq)} TRUE
+    {:tag :equivalence :preds ([(_ :guard #(= % TRUE)) (_ :guard #(= % TRUE))] :seq)} TRUE
+    {:tag :equivalence :preds ([(_ :guard #(= % FALSE)) (_ :guard #(= % TRUE))] :seq)} FALSE
+    {:tag :equivalence :preds ([(_ :guard #(= % TRUE)) (_ :guard #(= % FALSE))] :seq)} FALSE
     _ nil))
 
 (defn- simplify-ir

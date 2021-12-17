@@ -60,7 +60,6 @@ train-ir-auto
 
 (pprint (fset.simplify/simplify-all (unroll-predicate {:tag :member :elem {:tag :fn-call :f :fst :args '(:R9)} :set {:tag :difference
                                                                                                                      :sets '(:resbl :OCC)}})))
-
 (spit "resources/machines/b/target/train_auto1.mch" (ir->b train-ir-auto))
 
 (unroll-predicate {:tag :and, :preds '({:tag :member, :elem :R10, :set :frm} {:tag :member, :elem {:tag :fn-call, :f :fst, :args (:R10)}, :set {:tag :difference, :sets (:resbl :OCC)}}
