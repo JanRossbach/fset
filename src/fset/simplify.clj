@@ -1,6 +1,7 @@
 (ns fset.simplify
   (:require
    [fset.dsl :refer [AND FALSE AND TRUE]]
+   [fset.config :as cfg]
    [fset.backend :as b]
    [clojure.core.match :refer [match]]
    [com.rpl.specter :as s]))
@@ -41,8 +42,10 @@
 
 (defn simplify-all
   [ir]
-  (loop [IR ir]
-    (let [next-ir (simplify-ir IR)]
-      (if (= IR next-ir)
-        next-ir
-        (recur next-ir)))))
+  (if (not cfg/simplify-result)
+    ir
+    (loop [IR ir]
+      (let [next-ir (simplify-ir IR)]
+        (if (= IR next-ir)
+          next-ir
+          (recur next-ir))))))

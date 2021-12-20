@@ -40,6 +40,7 @@
          (apply AND (map (fn [binding] (T (b/apply-binding P binding))) (b/ids->bindings P ids)))
 
          ;; Member
+         {:tag :member :elem (_ :guard b/unrollable-var?) :set (_ :guard b/type?)} {}
          {:tag :member :elem {:tag :fn-call :f f :args ([(arg :guard b/set-element?)] :seq)} :set S} (T {:tag :subset :sets (list {:tag :image :rel f :set #{arg}} S)})
          {:tag :member :elem (elem :guard b/set-element?) :set s} (=TRUE (BOOL (nth (T s) (b/get-elem-index elem))))
 

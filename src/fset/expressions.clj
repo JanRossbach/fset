@@ -59,6 +59,8 @@
         {:tag :ran :rel r} (T {:tag :dom :rel {:tag :inverse :rel r}})
         {:tag :domain-restriction :set s :rel r} (mapv (fn [el row] (mapv (fn [elem] (AND el elem)) row)) (first (T s)) (T r))
         {:tag :range-restriction :set s :rel r} (bmtranspose (T {:tag :domain-restriction :set s :rel {:tag :inverse :rel r}}))
+        {:tag :domain-subtraction :set s :rel r} (mapv (fn [el row] (mapv (fn [elem] (AND (NOT el) elem)) row)) (first (T s)) (T r))
+        {:tag :range-subtraction :set s :rel r} (bmtranspose (T {:tag :domain-subtraction :set s :rel {:tag :inverse :rel r}}))
 
             ;; Variables
         (variable :guard b/unrollable-var?)

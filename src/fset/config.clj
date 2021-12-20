@@ -5,13 +5,15 @@
 
 ;; Namespace to set global constants
 
-(def logging true)
+(def logging false)
 
 (def max-unroll-size 200)
 
 (def eval-constants true)
 
-(def unroll-invariant true)
+(def unroll-invariant false)
+
+(def simplify-result true)
 
 (def deff-set-size 2)
 
@@ -20,10 +22,6 @@
 (def train-vars-allowed #{:frm :resrt :resbl :LBT :OCC})
 
 (def excluded-vars (difference train-vars train-vars-allowed))
-
-
-excluded-vars
-
 
 (defn log [e context]
   (if logging

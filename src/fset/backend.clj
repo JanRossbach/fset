@@ -150,10 +150,6 @@
 (defn eval-constant [c]
   (set (first (comprehend [:x] (bexists (get-constants) (band (b= :x c) (get-props-as-pred)))))))
 
-(defn- involves?
-  [ir ids]
-  (seq (s/select [(s/walker (fn [w] (some #(= % w) ids)))] ir)))
-
 (defn- deff-set->enum-set
   [size {:keys [id]}]
   {:tag :enumerated-set
@@ -219,8 +215,10 @@
   (keyword (apply str (map (fn [id] (if (keyword? id) (name id) id)) (flatten ids)))))
 
 (defn set-element?
-  [id]
-  (seq (s/select [SETS :elems s/ALL #(= % id)] (:ir @db))))
+  [elem]
+  (or (seq (s/select [SETS :elems s/ALL #(= % elem)] (:ir @db)))
+      (and (vector? elem)
+           (every? set-element? elem))))
 
 (defn finite-type?
   [expr]
@@ -318,12 +316,6 @@
 (defn intexpr?
   [expr]
   (= "INTEGER" (get-type expr)))
-
-(defn image
-  [bv s]
-  (let [elems (comprehend :x (bmember? :x s))
-        bools (mapcat elem->bools elems)]
-    (filter (fn [ir] (involves? ir bools)) bv)))
 
 (defn find-guards
   [op id]

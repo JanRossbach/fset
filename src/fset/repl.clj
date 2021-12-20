@@ -19,21 +19,16 @@
 
 (pprint scheduler-auto-ir)
 
+(time (fset/boolencode scheduler-ir))
+
+scheduler-auto-ir
+
 (ir->b scheduler-auto-ir)
 
 (def numbers-ir (b->ir (slurp "resources/test/Numbers.mch")))
 
 (b/model-check (b->ir (ir->b (fset/boolencode scheduler-ir))))
 
-(b/setup-backend scheduler-ir)
-
-(b/get-elem-index :PID3)
-
-(unroll-expression :active)
-
-(pprint (fset/boolencode scheduler-ir))
-
-(ir->b (fset/boolencode scheduler-ir))
 
 (spit "resources/machines/b/target/scheduler_auto1.mch" (ir->b (fset/boolencode scheduler-ir))) ;; Write the translated IR to another file
 
@@ -50,11 +45,11 @@
 
 train-ir-auto
 
-
 (b/unrollable-var? :TRK)
 
 (b/unroll-variable :TRK)
 
+(time (fset/boolencode train-ir))
 
 (pprint train-ir-auto)
 
@@ -78,7 +73,7 @@ train-ir-auto
                                                         :set #{:R1}}
                                                        :rel :TRK})))
 
-(pprint train-ir)
+
 
 
 (unroll-expression {:tag :union :sets (list :LBT #{{:tag :fn-call :f :fst :args (list :R1)}})})
@@ -104,27 +99,6 @@ train-ir-auto
 
 
 (pprint (unroll-expression :rsrtbl))
-
-
-
-
-
-
-
-
-
-
-()
-
-
-
-
-
-
-
-
-
-
 
 train-ir-auto
 
@@ -157,13 +131,6 @@ train-ir-auto
 
 (count (simplify-all (unroll-expression #{{:tag :fn-call :f :fst :args '(:R1)}})))
 
-
-
-
-
-
 (def uexpr (unroll-expression {:tag :fn-call :f :fst :args '(:R1)}))
-
-
 
 (def enumeration-set #{{:tag :fn-call :f :fst :args '(:R1)}})
