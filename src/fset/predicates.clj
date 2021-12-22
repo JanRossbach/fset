@@ -12,7 +12,7 @@
   (try
     ((fn T [e]
        (match e
-         ;; equalsity
+         ;; equality
          {:tag :equals :left l :right #{}} (apply AND (map NOT (T l)))
          {:tag :equals :left #{} :right r} (apply AND (map NOT (T r)))
 

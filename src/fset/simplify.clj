@@ -1,6 +1,6 @@
 (ns fset.simplify
   (:require
-   [fset.dsl :refer [AND FALSE AND TRUE]]
+   [fset.dsl :refer [AND FALSE AND TRUE NOT]]
    [fset.config :as cfg]
    [fset.backend :as b]
    [clojure.core.match :refer [match]]
@@ -30,10 +30,10 @@
     {:tag :implication :preds ([(_ :guard #(= % FALSE)) _] :seq)} TRUE
     {:tag :implication :preds ([_ (_ :guard #(= % TRUE))] :seq)} TRUE
     {:tag :implication :preds ([A (_ :guard #(= % FALSE))] :seq)} A
-    {:tag :equivalence :preds ([(_ :guard #(= % FALSE)) (_ :guard #(= % FALSE))] :seq)} TRUE
-    {:tag :equivalence :preds ([(_ :guard #(= % TRUE)) (_ :guard #(= % TRUE))] :seq)} TRUE
-    {:tag :equivalence :preds ([(_ :guard #(= % FALSE)) (_ :guard #(= % TRUE))] :seq)} FALSE
-    {:tag :equivalence :preds ([(_ :guard #(= % TRUE)) (_ :guard #(= % FALSE))] :seq)} FALSE
+    {:tag :equivalence :preds ([(_ :guard #(= % TRUE)) B] :seq)} B
+    {:tag :equivalence :preds ([(_ :guard #(= % FALSE)) B] :seq)} (NOT B)
+    {:tag :equivalence :preds ([A (_ :guard #(= % TRUE))] :seq)} A
+    {:tag :equivalence :preds ([A (_ :guard #(= % FALSE))] :seq)} (NOT A)
     _ nil))
 
 (defn- simplify-ir
