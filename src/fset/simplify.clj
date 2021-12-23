@@ -29,7 +29,7 @@
     {:tag :implication :preds ([(_ :guard #(= % TRUE)) B] :seq)} B
     {:tag :implication :preds ([(_ :guard #(= % FALSE)) _] :seq)} TRUE
     {:tag :implication :preds ([_ (_ :guard #(= % TRUE))] :seq)} TRUE
-    {:tag :implication :preds ([A (_ :guard #(= % FALSE))] :seq)} A
+    {:tag :implication :preds ([A (_ :guard #(= % FALSE))] :seq)} (NOT A)
     {:tag :equivalence :preds ([(_ :guard #(= % TRUE)) B] :seq)} B
     {:tag :equivalence :preds ([(_ :guard #(= % FALSE)) B] :seq)} (NOT B)
     {:tag :equivalence :preds ([A (_ :guard #(= % TRUE))] :seq)} A
