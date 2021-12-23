@@ -54,11 +54,11 @@ train-ir-auto
 (pprint train-ir-auto)
 
 (pprint (fset.simplify/simplify-all (unroll-predicate {:tag :member :elem {:tag :fn-call :f :fst :args '(:R9)} :set {:tag :difference
-                                                                                                                     :sets '(:resbl :OCC)}})))
+                                                                                                                  :sets '(:resbl :OCC)}})))
 (spit "resources/machines/b/target/train_auto1.mch" (ir->b train-ir-auto))
 
 (unroll-predicate {:tag :and, :preds '({:tag :member, :elem :R10, :set :frm} {:tag :member, :elem {:tag :fn-call, :f :fst, :args (:R10)}, :set {:tag :difference, :sets (:resbl :OCC)}}
-                                       {:tag :equals, :left {:tag :fn-call, :f :rsrtbl, :args ({:tag :fn-call, :f :fst, :args (:R10)})}, :right :R10})})
+                                                                          {:tag :equals, :left {:tag :fn-call, :f :rsrtbl, :args ({:tag :fn-call, :f :fst, :args (:R10)})}, :right :R10})})
 
 (unroll-predicate {:tag :member :elem :R10 :set :frm})
 
@@ -67,11 +67,11 @@ train-ir-auto
 
 
 (pprint (fset.simplify/simplify-all (unroll-predicate {:tag :domain-restriction
-                                                       :set
-                                                       {:tag :image
-                                                        :rel {:tag :inverse :rel :rsrtbl}
-                                                        :set #{:R1}}
-                                                       :rel :TRK})))
+                                                    :set
+                                                    {:tag :image
+                                                      :rel {:tag :inverse :rel :rsrtbl}
+                                                      :set #{:R1}}
+                                                    :rel :TRK})))
 
 
 

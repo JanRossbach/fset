@@ -1,6 +1,7 @@
 /target
 /classes
 /checkouts
+.clj-kondo/
 .lsp
 *.prob
 TODOs.org
