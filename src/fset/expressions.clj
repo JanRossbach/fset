@@ -3,6 +3,7 @@
    [fset.config :as cfg]
    [clojure.core.matrix :as m]
    [com.rpl.specter :as s]
+   [taoensso.timbre :as log]
    [clojure.core.match :refer [match]]
    [fset.dsl :refer [AND OR =TRUE NOT TRUE FALSE BOOL IN CARDINALITY bv->setexpr]]
    [fset.backend :as b]))
@@ -76,7 +77,8 @@
          (_ :guard #(and (b/variable? %) (not (b/unrollable-var? %)))))
         (bemap (fn [elem] (IN elem e)) (b/get-type-elem-matrix e))
 
-        _ (throw (ex-info "Unsupported Expression found!" {:expr set-expr :failed-because e}))))
+        _ (throw (ex-info "Unsupported Expression found!" {:expr set-expr
+                                                           :failed-because e}))))
     set-expr)))
 
 (defn intexpr->intexpr

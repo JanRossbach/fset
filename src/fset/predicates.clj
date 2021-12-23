@@ -1,6 +1,6 @@
 (ns fset.predicates
   (:require
-   [fset.config :as cfg]
+   [taoensso.timbre :as log]
    [clojure.core.match :refer [match]]
    [fset.expressions :refer [unroll-expression boolvars->set]]
    [fset.dsl :refer [AND OR <=> NOT =TRUE TRUE EQUALS => FUN SURJECTIVE INJECTIVE BIJECTIVE TOTAL-FUN BOOL]]
@@ -79,5 +79,5 @@
          expr (unroll-expression expr)))
      pred)
     (catch Exception e
-      (cfg/log e pred)
+      (log/info "Context: Predicate" e)
       (boolvars->set pred))))

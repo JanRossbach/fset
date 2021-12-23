@@ -4,10 +4,10 @@
    [fset.dsl :refer [MACHINE AND BOOL BOOLDEFS ASSIGN AND IN]]
    [fset.expressions :refer [unroll-expression boolvars->set]]
    [clojure.core.match :refer [match]]
+   [taoensso.timbre :as log]
    [fset.predicates :refer [unroll-predicate]]
    [fset.simplify :refer [simplify-all]]
    [fset.backend :as b]))
-
 
 (defn unroll-id-val
   [[id val]]
@@ -18,7 +18,7 @@
                   (map :name uvar)
                   uexpr))
            (catch Exception e
-             (cfg/log e (str "Assignment to value: " val))
+             (log/info "Context Assignment " e)
              (map (fn [v p] (ASSIGN v (BOOL p)))
                   (map :name uvar)
                   (map (fn [v] (IN (:elem v) (boolvars->set val))) uvar)))))
@@ -62,6 +62,7 @@
 
 (defn unroll-operation
   [op]
+  (log/info (str "Unrolling Operation " (:name op)))
   (let [bindings (b/op->bindings op)]
     (if (seq bindings)
       (map (partial new-op op) bindings)

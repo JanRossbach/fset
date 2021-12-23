@@ -1,34 +1,15 @@
-(ns fset.config
-  (:require [clojure.set :refer [difference]]
-            [clojure.stacktrace :refer [print-throwable]]
-            [clojure.pprint :refer [pprint]]))
+(ns fset.config)
 
 ;; Namespace to set global constants
-
-(def logging false)
 
 (def max-unroll-size 200)
 
 (def eval-constants true)
 
-(def unroll-invariant false)
+(def unroll-invariant true)
 
 (def simplify-result true)
 
 (def deff-set-size 2)
 
-(def train-vars #{:LBT :TRK :frm :OCC :resbl :resrt :rsrtbl})
-
-(def train-vars-allowed #{:frm :resrt :resbl :LBT :OCC})
-
-(def excluded-vars (difference train-vars train-vars-allowed))
-
-(defn log [e context]
-  (if logging
-    (do
-      (pprint "Context: ")
-      (pprint context)
-      (print-throwable e)
-      (println)
-      (println))
-    nil))
+(def excluded-vars #{:TRK :rsrtbl})

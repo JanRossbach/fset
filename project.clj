@@ -5,6 +5,7 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[com.rpl/specter "1.1.3"]
                  [org.clojure/core.match "1.0.0"]
+                 [com.taoensso/timbre "5.1.2"]
                  [net.mikera/core.matrix "0.62.0"]
                  [potemkin "0.4.5"]
                  [org.clojars.pkoerner/lisb "0.0.2-SNAPSHOT"]
