@@ -24,8 +24,6 @@ scheduler-auto-ir
 
 (b/model-check (b->ir (ir->b (fset/boolencode scheduler-ir))))
 
-(spit "components/encoder/resources/encoder/scheduler_auto1.mch" (ir->b scheduler-auto-ir)) ;; Write the translated IR to another file
-
 (spit "resources/test/scheduler-ir.edn" (fset/boolencode scheduler-ir))
 
 ;; TRAIN

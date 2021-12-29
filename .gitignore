@@ -39,3 +39,4 @@ projects/**/pom.xml
 .clj-kondo/
 .lsp/
 .dir-locals.el
+TODOs.org
