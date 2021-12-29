@@ -84,6 +84,9 @@
 
 (defn boolencode
   [ir config]
+  (log/swap-config! assoc :min-level (if (:logging config)
+                                            :debug
+                                            :warn))
   (->> (b/setup-backend ir config)
        (unroll-machine)
        (simplify-all)))

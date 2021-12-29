@@ -8,6 +8,7 @@
    :unroll-invariant true
    :simplify-result true
    :deff-set-size 2
+   :logging false
    :excluded-vars #{}})
 
 (defonce config (atom default-config))
@@ -20,6 +21,9 @@
 
 (defn get-config []
   @config)
+
+(defn reset-config []
+  (reset! config default-config))
 
 (defn boolencode [ir & kwargs]
   (encoder/boolencode ir (reduce (fn [cfg [k v]] (assoc cfg k v)) @config (partition 2 kwargs))))
