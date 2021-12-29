@@ -1,7 +1,0 @@
-MACHINE fun_extract
-VARIABLES q, VAR1, VAR2
-INVARIANT VAR1 : 5..6 & VAR2 : 5..6  & q < 15
-INITIALISATION q := 7 || VAR1 := 5 || VAR2 := 6
-OPERATIONS
-run = q := q + VAR1
-END

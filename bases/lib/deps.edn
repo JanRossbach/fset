@@ -1,0 +1,4 @@
+{:paths ["src" "resources"]
+ :deps {}
+ :aliases {:test {:extra-paths ["test"]
+                  :extra-deps {org.clojars.pkoerner/lisb {:mvn/version "0.0.3"}}}}}

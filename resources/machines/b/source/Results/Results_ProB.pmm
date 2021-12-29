@@ -1,3 +1,0 @@
-﻿THEORY User_Pass IS
-Operation(WellDefinednessProperties) & ff(0) & mp & eh(CAR,_h,Goal) & pr
-END 
