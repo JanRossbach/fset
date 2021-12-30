@@ -1,8 +1,9 @@
 (ns hhu.fset.backend.interface
-  (:require [hhu.fset.backend.core :as core]
-            [hhu.fset.backend.util :as u]
-            [hhu.fset.backend.lisb-util :as lu]
-            [hhu.fset.backend.specter-util :as su]))
+  (:require
+   [hhu.fset.backend.core :as core]
+   [hhu.fset.backend.lisb-util :as lu]
+   [hhu.fset.backend.specter-util :as su]
+   [hhu.fset.backend.util :as u]))
 
 ;; Setup
 
@@ -83,7 +84,7 @@
   (lu/model-check ir))
 
 (defn get-type [formula]
-  (lu/get-type (:ss db) formula))
+  (lu/get-type (:ss @db) formula))
 
 (defn intexpr? [expr]
   (lu/intexpr? (:ss @db) expr))

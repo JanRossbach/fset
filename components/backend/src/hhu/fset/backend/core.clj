@@ -170,7 +170,7 @@
   [ir ss config]
   (let [vars (su/get-vars ir)
         svars (into #{} vars)]
-    (filter (fn [v] (not (contains? svars v))) (mapcat (fn [id] (unroll-variable ir ss config id)) vars))))
+    (filter (fn [v] (not (contains? svars (:name v)))) (mapcat (fn [id] (unroll-variable ir ss config id)) vars))))
 
 (defn elem->bools
   [ss ir elem]

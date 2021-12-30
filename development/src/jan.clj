@@ -34,7 +34,7 @@
 
   (ir->b scheduler-auto-ir)
 
-  (b/model-check (b->ir (ir->b (fset/boolencode scheduler-ir))))
+ (b/model-check (b->ir (ir->b (fset/boolencode scheduler-ir))))
 
   (spit "resources/test/scheduler-ir.edn" (fset/boolencode scheduler-ir))
 
