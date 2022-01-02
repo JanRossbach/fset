@@ -19,6 +19,9 @@
                 :cfg config))
     new-ir))
 
+(defn max-unroll-size []
+  (:max-unroll-size (:cfg @db)))
+
 ;; core interface
 
 (defn get-all-bools []

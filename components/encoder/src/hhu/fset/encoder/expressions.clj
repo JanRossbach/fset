@@ -2,7 +2,6 @@
   (:require
    [clojure.core.matrix :as m]
    [com.rpl.specter :as s]
-   [taoensso.timbre :as log]
    [clojure.core.match :refer [match]]
    [hhu.fset.dsl.interface :refer [AND OR =TRUE NOT TRUE FALSE BOOL IN CARDINALITY bv->setexpr]]
    [hhu.fset.backend.interface :as b]))
@@ -32,8 +31,8 @@
    ((fn T [e]
       (match e
         (elem :guard b/set-element?) (T #{elem})
-        #{} (repeat 200 FALSE)
-        (_ :guard b/carrier?) (repeat 200 TRUE)
+        #{} (repeat (b/max-unroll-size) FALSE)
+        (_ :guard b/carrier?) (repeat (b/max-unroll-size) TRUE)
 
         (enumeration-set :guard #(and (set? %) (every? b/set-element? %)))
         (vector (mapv (fn [el] (if (contains? enumeration-set el) TRUE FALSE)) (b/get-type-elems (first enumeration-set))))
@@ -65,12 +64,11 @@
         (variable :guard b/unrollable-var?)
         (bemap (fn [elem] (=TRUE (b/create-boolname variable elem))) (b/get-type-elem-matrix variable))
 
-        (c :guard #(and true (b/constant? %) (b/unrollable? %)))
+        (c :guard #(and (b/constant? %) (b/unrollable? %)))
         (let [ec (b/eval-constant c)] (bemap (fn [elem] (if (contains? ec elem) TRUE FALSE)) (b/get-type-elem-matrix c)))
 
         ;; Other Expressions defining sets
         (:or
-         (_ :guard #(and (b/constant? %) (b/unrollable? %)))
          {:tag (:or :lambda :comprehension-set)}
          (_ :guard #(and (b/variable? %) (not (b/unrollable-var? %)))))
         (bemap (fn [elem] (IN elem e)) (b/get-type-elem-matrix e))

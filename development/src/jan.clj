@@ -9,7 +9,6 @@
 
 (def jan-config
   {:max-unroll-size 200
-   :eval-constants true
    :unroll-invariant true
    :simplify-result true
    :deff-set-size 2
@@ -34,14 +33,24 @@
 
   (ir->b scheduler-auto-ir)
 
- (b/model-check (b->ir (ir->b (fset/boolencode scheduler-ir))))
+  (b/model-check (b->ir (ir->b (fset/boolencode scheduler-ir))))
 
   (spit "resources/test/scheduler-ir.edn" (fset/boolencode scheduler-ir))
 
   (def train-ir (b->ir (slurp "components/encoder/resources/encoder/Train.mch")))
 
-  (def train-auto-ir (fset/boolencode train-ir :excluded-vars #{:TRK :rsrtbl} :logging true))
+  (def train-auto-ir (fset/boolencode train-ir :excluded-vars #{:rsrtbl} :logging true))
 
   (spit "components/encoder/resources/encoder/train_auto1.mch" (ir->b train-auto-ir)) ;; Write the translated IR to another file
+
+  (ir->b {:tag :fn-call :f {:tag :union :sets '({:tag :if-expr
+                                                 :cond {:tag :equals :left :TRUE :right :TRUE}
+                                                 :then #{[:A1 :B1]}
+                                                 :else #{}}
+                                                {:tag :if-expr
+                                                 :cond {:tag :equals :left :TRUE :right :FALSE}
+                                                 :then #{[:A1 :B2]}
+                                                 :else #{}})}
+          :args '(:A1)})
 
   )

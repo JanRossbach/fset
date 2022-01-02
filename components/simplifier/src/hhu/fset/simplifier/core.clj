@@ -23,6 +23,8 @@
     {:tag :parallel-sub :subs (substitutions :guard #(= (count %) 1))} (first substitutions)
     {:tag :parallel-sub :subs (_ :guard empty?)} s/NONE
     {:tag :select :clauses ([outer-guard {:tag :select :clauses ([inner-guard & r] :seq)}] :seq)} {:tag :select :clauses (cons (AND outer-guard inner-guard) r)}
+    {:if-expr :cond (_ :guard #(= % TRUE)) :then then} then
+    {:if-expr :cond (_ :guard #(= % FALSE)) :else else} else
     {:tag :implication :preds ([(_ :guard #(= % TRUE)) B] :seq)} B
     {:tag :implication :preds ([(_ :guard #(= % FALSE)) _] :seq)} TRUE
     {:tag :implication :preds ([_ (_ :guard #(= % TRUE))] :seq)} TRUE

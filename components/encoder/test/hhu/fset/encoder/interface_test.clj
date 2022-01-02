@@ -8,7 +8,6 @@
 
 (def test-config
   {:max-unroll-size 200
-   :eval-constants true
    :unroll-invariant true
    :simplify-result true
    :deff-set-size 2

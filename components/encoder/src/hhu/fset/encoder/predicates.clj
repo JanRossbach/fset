@@ -44,29 +44,29 @@
          {:tag :member :elem (elem :guard b/set-element?) :set s} (=TRUE (BOOL (nth (T s) (b/get-elem-index elem))))
 
          ;; Concrete Function Types
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-fn :sets ([_ _] :seq)}}
-         (FUN (b/get-type-elem-matrix v))
+         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-fn :sets ([_ _] :seq)}}
+         ;; (FUN (b/get-type-elem-matrix v))
 
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-fn :sets ([_ _] :seq)}}
-         (TOTAL-FUN (b/get-type-elem-matrix v))
+         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-fn :sets ([_ _] :seq)}}
+         ;; (TOTAL-FUN (b/get-type-elem-matrix v))
 
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-surjection :sets ([_ _] :seq)}}
-         (let [em (b/get-type-elem-matrix v)] (AND (FUN em) (SURJECTIVE em)))
+         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-surjection :sets ([_ _] :seq)}}
+         ;; (let [em (b/get-type-elem-matrix v)] (AND (FUN em) (SURJECTIVE em)))
 
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-surjection :sets ([_ _] :seq)}}
-         (let [em (b/get-type-elem-matrix v)] (AND (TOTAL-FUN em) (SURJECTIVE em)))
+         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-surjection :sets ([_ _] :seq)}}
+         ;; (let [em (b/get-type-elem-matrix v)] (AND (TOTAL-FUN em) (SURJECTIVE em)))
 
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-injection :sets ([_ _] :seq)}}
-         (let [em (b/get-type-elem-matrix v)] (AND (FUN em) (INJECTIVE em)))
+         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-injection :sets ([_ _] :seq)}}
+         ;; (let [em (b/get-type-elem-matrix v)] (AND (FUN em) (INJECTIVE em)))
 
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-injection :sets ([_ _] :seq)}}
-         (let [em (b/get-type-elem-matrix v)] (AND (TOTAL-FUN em) (INJECTIVE em)))
+         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-injection :sets ([_ _] :seq)}}
+         ;; (let [em (b/get-type-elem-matrix v)] (AND (TOTAL-FUN em) (INJECTIVE em)))
 
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-bijection :sets ([_ _] :seq)}}
-         (let [em (b/get-type-elem-matrix v)] (AND (FUN em) (BIJECTIVE em)))
+         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-bijection :sets ([_ _] :seq)}}
+         ;; (let [em (b/get-type-elem-matrix v)] (AND (FUN em) (BIJECTIVE em)))
 
-         {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-bijection :sets ([_ _] :seq)}}
-         (let [em (b/get-type-elem-matrix v)] (AND (TOTAL-FUN em) (BIJECTIVE em)))
+         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-bijection :sets ([_ _] :seq)}}
+         ;; (let [em (b/get-type-elem-matrix v)] (AND (TOTAL-FUN em) (BIJECTIVE em)))
 
          ;; Numbers
          {:tag :equals :left l :right r} {:tag :equals :left (T l) :right (T r)}

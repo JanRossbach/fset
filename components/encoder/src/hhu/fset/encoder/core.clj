@@ -87,6 +87,7 @@
   (log/swap-config! assoc :min-level (if (:logging config)
                                             :debug
                                             :warn))
-  (->> (b/setup-backend ir config)
-       (unroll-machine)
-       (simplify-all)))
+  (let [res (unroll-machine (b/setup-backend ir config))]
+    (if (:simplify-result config)
+      (simplify-all res)
+      res)))

@@ -11,7 +11,12 @@ clone this repositoriy and start a repl with the dev alias. You can then run the
 
 ## Basic Usage
 
-TODO
+
+``` clojure
+(boolencode )
+
+```
+
 
 ## Configuration
 

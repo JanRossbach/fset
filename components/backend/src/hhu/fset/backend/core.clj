@@ -108,13 +108,13 @@
 
 
 (defn finite-type?
-  [ir ss expr]
+  [ir ss config expr]
   (if (su/carrier? ir expr)
     true
     (match (get-type-ir ss expr)
-      {:tag :power-set :set (_ :guard (partial finite-type? ir ss))} true
+      {:tag :power-set :set (_ :guard (partial finite-type? ir ss config))} true
       {:tag :integer-set} false
-      {:tag :relation :sets ([A B] :seq)} (and (su/carrier? ir A) (su/carrier? ir B) (< (count (get-relation-elems ss A B)) 200))
+      {:tag :relation :sets ([A B] :seq)} (and (su/carrier? ir A) (su/carrier? ir B) (< (count (get-relation-elems ss A B)) (:max-unroll-size config)))
       _ false)))
 
 (defn finite?
@@ -122,7 +122,7 @@
   (match expr
     {:tag :interval :from n :to m} (< (- m n) (:max-unroll-size config))
     {:tag :cardinality} true
-    _ (finite-type? ir ss expr)))
+    _ (finite-type? ir ss config expr)))
 
 (defn unrollable?
   [ir ss config id]

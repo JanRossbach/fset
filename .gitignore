@@ -40,3 +40,7 @@ projects/**/pom.xml
 .lsp/
 .dir-locals.el
 TODOs.org
+
+# Resurces
+components/encoder/resources/encoder/**
+*.prob
