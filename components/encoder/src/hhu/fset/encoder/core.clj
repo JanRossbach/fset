@@ -79,8 +79,8 @@
     _ c))
 
 (defn unroll-machine
-  [{:keys [name clauses]}]
-  (MACHINE name (map unroll-clause clauses)))
+  [{:keys [name machine-clauses]}]
+  (MACHINE name (map unroll-clause machine-clauses)))
 
 (defn boolencode
   [ir config]

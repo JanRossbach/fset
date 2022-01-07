@@ -4,7 +4,7 @@
             [lisb.translation.lisb2ir :refer [band]]))
 
 (defn TAG [t] (s/path #(= (:tag %) t)))
-(def CLAUSES (s/if-path (s/must :ir) [:ir :clauses] [:clauses]))
+(def CLAUSES (s/if-path (s/must :ir) [:ir :clauses] [:machine-clauses]))
 (defn CLAUSE [^clojure.lang.Keyword name] (s/path [CLAUSES s/ALL (TAG name)]))
 (def VARIABLES (s/path [(CLAUSE :variables) :values]))
 (def INVARIANTS (s/path [(CLAUSE :invariants) :values]))

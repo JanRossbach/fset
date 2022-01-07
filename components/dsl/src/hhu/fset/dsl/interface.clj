@@ -4,10 +4,10 @@
    [clojure.core.matrix :as m]))
 
 (def TRUE
-  (b= :TRUE :TRUE))
+  (b= true true))
 
 (def FALSE
-  (b= :TRUE :FALSE))
+  (b= true false))
 
 (defn BOOL
   [p]
@@ -35,16 +35,16 @@
   (bsubset? sub set))
 
 (defn =FALSE [p]
-  (b= p :FALSE))
+  (b= p false))
 
 (defn =TRUE [p]
-  (b= p :TRUE))
+  (b= p true))
 
 (defn IN [el s]
   (bmember? el s))
 
 (defn BOOLDEF [el]
-  (bmember? el :BOOL))
+  (bmember? el {:tag :bool-set}))
 
 (defn BOOLDEFS [els]
   (if (seq els)
@@ -60,7 +60,7 @@
 (defn MACHINE [name clauses]
   {:tag :machine
    :name name
-   :clauses clauses})
+   :machine-clauses clauses})
 
 (defn CARDINALITY [PRED elems]
   (apply b+ (map (fn [e] (IF (PRED e) 1 0)) elems)))

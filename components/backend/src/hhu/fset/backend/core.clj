@@ -28,7 +28,7 @@
     :timeout
     (match (first result)
            (_ :guard string?) (sort (map keyword result))
-           (_ :guard vector?) (sort-by first (map (fn [v] (mapv interpret-animator-result v)) result))
+           (_ :guard vector?) (map (fn [[l r]] {:tag :maplet :left l :right r}) (sort-by first (map (fn [v] (mapv interpret-animator-result v)) result)))
            (_ :guard set?) (map interpret-animator-result result)
            (_ :guard char?) (keyword result)
            nil '())))
@@ -65,10 +65,11 @@
     {:tag :power-set :set s} (m/matrix (vector (get-set-elems ss s)))
     {:tag :relation :sets ([A B] :seq)} (m/matrix (for [a (get-set-elems ss A)]
                                                     (for [b (get-set-elems ss B)]
-                                                      [a b])))))
+                                                      {:tag :maplet :left a :right b})))))
 
 (defn eval-constant [ss ir c]
   (set (first (comprehend ss [:x] (bexists (su/get-constants ir) (band (b= :x c) (su/get-props-as-pred ir)))))))
+
 
 (defn non-det-clause?
   [pattern]
@@ -147,7 +148,7 @@
     (m/matrix (for [d dom-elems]
                 (for [r ran-elems]
                   {:name (create-boolname var-id d r)
-                   :elem [d r]
+                   :elem {:tag :maplet :left d :right r}
                    :var var-id})))))
 
 (def unroll-variable
