@@ -9,18 +9,45 @@ This is done to increase performance of partial order reduction optimizations in
 This tool is still in development. If you want to try it out anyway,
 clone this repositoriy and start a repl with the dev alias. You can then run the functions as described below.
 
-## Basic Usage
-
+## Basic Usage and Configuration
 
 ``` clojure
-(boolencode )
+(ns myns.core
+  (:require
+    [hhu.fset.lib.core :as fset]
+    [lisb.translation.util :refer [b->ir ir->b]]))
+
+(def ir (b->ir (slurp "path/to/b/machine"))) ;; Read in the B machine IR from a file
+
+(fset/unroll-ops ir) ;; Just unrolling operations
+
+(fset/boolencode ir) ;; Translation using the default config
+
+(fset/boolencode ir :excluded-vars :all) ; Configuration can be done through kwargs
+(fset/boolencode ir :excluded-vars #{:var1 :var2})
+
+(fset/boolencode ir :logging true)
+
+;; Define a personal config
+(def my-config
+  {:max-unroll-size 200
+   :unroll-invariant true
+   :unroll-sub true
+   :simplify-result true
+   :deff-set-size 2
+   :logging true
+   :excluded-vars #{}})
+
+(fset/set-config! my-config) ;; You can apply your config as the default for the session
+
+(fset/set-config-var! :logging false) ;; You can also set individual vars like that
+
+(def result-ir (fset/boolencode ir)) ; This uses my-config but with logging set to false
+
+(ir->b result-ir) ;; Translate the results back to B
 
 ```
 
-
-## Configuration
-
-TODO
 
 ## License
 
