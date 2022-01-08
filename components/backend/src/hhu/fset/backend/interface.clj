@@ -33,6 +33,9 @@
 (defn unroll-invariant? []
   (:unroll-invariant (:cfg @db)))
 
+(defn unroll-sub? []
+  (:unroll-sub (:cfg @db)))
+
 ;; core interface
 
 (defn get-all-bools []

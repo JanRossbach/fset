@@ -132,13 +132,16 @@
 
 (defn unrollable?
   [ir ss config id]
-  (and (not (contains? (:excluded-vars config) id))
-       (finite? ir ss config id)))
+  (and
+   (not (= :all (:excluded-vars config)))
+   (not (contains? (:excluded-vars config) id))
+   (finite? ir ss config id)))
 
 (defn unrollable-var?
   [ir ss config id]
-  (and (su/variable? ir id)
-       (unrollable? ir ss config id)))
+  (and
+   (su/variable? ir id)
+   (unrollable? ir ss config id)))
 
 (defn fn-call?
   [expr]

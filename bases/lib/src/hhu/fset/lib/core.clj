@@ -5,10 +5,20 @@
 (def default-config
   {:max-unroll-size 200
    :unroll-invariant true
+   :unroll-sub true
    :simplify-result true
    :deff-set-size 2
    :logging false
    :excluded-vars #{}})
+
+(def unroll-ops-default-config
+  {:max-unroll-size 200
+   :unroll-invariant false
+   :unroll-sub false
+   :simplify-result true
+   :deff-set-size 2
+   :logging false
+   :excluded-vars :all})
 
 (defonce config (atom default-config))
 
@@ -26,3 +36,6 @@
 
 (defn boolencode [ir & kwargs]
   (encoder/boolencode ir (reduce (fn [cfg [k v]] (assoc cfg k v)) @config (partition 2 kwargs))))
+
+(defn unroll-ops [ir & kwargs]
+  (encoder/boolencode ir (reduce (fn [cfg [k v]] (assoc cfg k v)) unroll-ops-default-config (partition 2 kwargs))))

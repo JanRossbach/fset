@@ -12,51 +12,82 @@
    [hhu.fset.encoder.predicates :refer [unroll-predicate]]
    [lisb.translation.util :refer [b->ir ir->b lisb->ir]]))
 
-(setexpr->bitvector {:tag :union, :sets '(:rsrtbl {:tag :range-restriction, :rel :rtbl, :set #{:R9}})})
 
-(unroll-predicate {:tag :and, :preds '({:tag :member, :elem :R9, :set :frm} {:tag :member, :elem {:tag :fn-call, :f :fst, :args (:R9)}, :set {:tag :difference, :sets (:resbl :OCC)}} {:tag :equals, :left {:tag :fn-call, :f :rsrtbl, :args ({:tag :fn-call, :f :fst, :args (:R9)})}, :right :R9})})
-
-(unroll-predicate {:tag :equals, :left {:tag :fn-call, :f :rsrtbl, :args '({:tag :fn-call, :f :fst, :args (:R9)})}, :right :R9})
-
-
-
-(b/get-type-elem-matrix {:tag :maplet :left :A :right :B})
-
-(b/setup-backend train-ir jan-config)
 
 (def jan-config
   {:max-unroll-size 200
    :unroll-invariant true
+   :unroll-sub true
    :simplify-result true
    :deff-set-size 2
    :logging true
    :excluded-vars #{}})
 
 
-  (fset/reset-config)
+;; Scheduler
 
-  (def scheduler-ir (b->ir (slurp "components/encoder/resources/encoder/scheduler.mch"))) ;; Read in the B machine IR from a file
+(def scheduler-ir (b->ir (slurp "components/encoder/resources/encoder/scheduler.mch"))) ;; Read in the B machine IR from a file
 
-  (def scheduler-auto-ir (fset/boolencode scheduler-ir :logging true))
+(def scheduler-auto-ir (fset/boolencode scheduler-ir :logging false :excluded-vars #{:active :ready :waiting} :unroll-sub false))
 
-  (pprint scheduler-ir)
+(pprint (fset/unroll-ops scheduler-ir))
 
-  (pprint scheduler-auto-ir)
 
-  (time (fset/boolencode scheduler-ir))
+(b/setup-backend scheduler-ir jan-config)
 
-  scheduler-auto-ir
+(pprint (fset/boolencode scheduler-ir :excluded-vars #{:active :ready :waiting}))
 
-  (ir->b scheduler-auto-ir)
+(pprint scheduler-ir)
 
-  (b/model-check (b->ir (ir->b (fset/boolencode scheduler-ir))))
+(pprint scheduler-auto-ir)
 
-  (spit "resources/test/scheduler-ir.edn" (fset/boolencode scheduler-ir))
+(time (fset/boolencode scheduler-ir))
 
-  (def train-ir (b->ir (slurp "components/encoder/resources/encoder/Train.mch")))
+scheduler-auto-ir
 
-  (def train-auto-ir (fset/boolencode train-ir :excluded-vars #{} :logging true))
+(ir->b scheduler-auto-ir)
 
-  (spit "components/encoder/resources/encoder/train_auto1.mch" (ir->b train-auto-ir)) ;; Write the translated IR to another file
+(b/model-check (b->ir (ir->b (fset/boolencode scheduler-ir))))
 
-  (spit "components/encoder/resources/encoder/scheduler_auto1.mch" (ir->b scheduler-auto-ir))
+(spit "components/encoder/resources/encoder/scheduler_auto1.mch" (ir->b scheduler-auto-ir))
+
+
+;; Train
+
+
+(def train-ir (b->ir (slurp "components/encoder/resources/encoder/Train.mch")))
+
+
+(pprint train-ir)
+
+(def train-auto-ir (fset/unroll-ops train-ir ))
+
+(def train-auto-ir (fset/boolencode train-ir :logging true :unroll-invariant false))
+
+(pprint train-auto-ir)
+
+(spit "components/encoder/resources/encoder/train_auto1.mch" (ir->b train-auto-ir)) ;; Write the translated IR to another file
+
+(b/setup-backend train-ir jan-config)
+
+(def up (unroll-predicate {:tag :for-all,
+                           :ids [:x :y],
+                           :implication
+                           {:tag :implication,
+                            :preds
+                            '({:tag :and,
+                               :preds
+                               ({:tag :member, :elem :x, :set :BLOCKS}
+                                {:tag :member, :elem :y, :set :BLOCKS}
+                                {:tag :member,
+                                 :elem {:tag :maplet, :left :x, :right :y},
+                                 :set :TRK})}
+                              {:tag :exists,
+                               :ids [:r],
+                               :pred
+                               {:tag :and,
+                                :preds
+                                ({:tag :member, :elem :r, :set :ROUTES}
+                                 {:tag :member,
+                                  :elem {:tag :maplet, :left :x, :right :y},
+                                  :set {:tag :fn-call, :f :nxt, :args (:r)}})}})}}))

@@ -23,18 +23,19 @@
                   (map (fn [v] (IN (:elem v) (boolvars->set val))) uvar)))))
     (list (ASSIGN id (boolvars->set val)))))
 
-
 (defn unroll-sub
   [sub]
-  ((fn T [e]
-     (match e
-       {:tag :parallel-sub :subs substitutions} {:tag :parallel-sub :subs (map T substitutions)}
-       {:tag :if-sub :cond condition :then then :else else} {:tag :if-sub :cond (unroll-predicate condition) :then (T then) :else (T else)}
-       {:tag :select :clauses clauses} {:tag :select :clauses (mapcat (fn [[P S]] [(unroll-predicate P) (T S)]) (partition 2 clauses))}
-       {:tag :any :ids _ :pred _ :subs then} {:tag :parallel-sub :subs (map T then)}
-       {:tag :assignment :id-vals id-vals} {:tag :parallel-sub :subs (mapcat unroll-id-val (partition 2 id-vals))}
-       _ e))
-   sub))
+  (if (not (b/unroll-sub?))
+    sub
+    ((fn T [e]
+       (match e
+         {:tag :parallel-sub :subs substitutions} {:tag :parallel-sub :subs (map T substitutions)}
+         {:tag :if-sub :cond condition :then then :else else} {:tag :if-sub :cond (unroll-predicate condition) :then (T then) :else (T else)}
+         {:tag :select :clauses clauses} {:tag :select :clauses (mapcat (fn [[P S]] [(unroll-predicate P) (T S)]) (partition 2 clauses))}
+         {:tag :any :ids _ :pred _ :subs then} {:tag :parallel-sub :subs (map T then)}
+         {:tag :assignment :id-vals id-vals} {:tag :parallel-sub :subs (mapcat unroll-id-val (partition 2 id-vals))}
+         _ e))
+     sub)))
 
 (defn add-guards
   [op guards]
@@ -85,8 +86,8 @@
 (defn boolencode
   [ir config]
   (log/swap-config! assoc :min-level (if (:logging config)
-                                            :debug
-                                            :warn))
+                                       :debug
+                                       :warn))
   (let [res (unroll-machine (b/setup-backend ir config))]
     (if (:simplify-result config)
       (simplify-all res)
