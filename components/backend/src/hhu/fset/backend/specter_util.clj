@@ -79,6 +79,15 @@
 
 (defn set-element?
   [ir elem]
-  (or (seq (s/select [SETS :elems s/ALL #(= % elem)] ir))
-      (and (vector? elem)
-           (every? (partial set-element? ir) elem))))
+  (seq (s/select [SETS :elems s/ALL #(= % elem)] ir)))
+
+(defn simple-tuple?
+  [ir elem]
+  (and (= (:tag elem) :maplet)
+       (set-element? ir (:left elem))
+       (set-element? ir (:right elem))))
+
+(defn contains-vars?
+  [ir expr]
+  (let [vars (set (get-vars ir))]
+    (seq (s/select [(s/walker #(contains? vars %))] expr))))

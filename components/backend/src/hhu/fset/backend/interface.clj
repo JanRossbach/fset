@@ -11,12 +11,20 @@
 
 (defn setup-backend
   [ir config]
-  (let [new-ir (su/replace-def-sets-with-enum-sets (:deff-set-size config) ir)]
-    (reset! db (assoc
-                {}
-                :ir new-ir
-                :ss (lu/get-statespace new-ir)
-                :cfg config))
+  (let [new-ir (su/replace-def-sets-with-enum-sets (:deff-set-size config) ir)
+        ss (lu/get-statespace new-ir)]
+    (.explore (.getState ss "root"))
+    (let [cs (.getDestination (first (.getTransitions (.getState ss "root"))))
+          constants (.getConstantValues
+                     cs
+                     de.prob.animator.domainobjects.FormulaExpand/EXPAND)]
+      (reset! db (assoc
+                  {}
+                  :ir new-ir
+                  :ss ss
+                  :constant-state cs
+                  :constants (into {} (for [[id-obj v-obj] constants] [(keyword (.toString id-obj)) (set (core/interpret-animator-result (lisb.prob.animator/get-result v-obj)))]))
+                  :cfg config)))
     new-ir))
 
 (defn max-unroll-size []
@@ -29,8 +37,7 @@
     (core/get-all-bools ir ss cfg)))
 
 (defn eval-constant [c]
-  (let [{:keys [ir ss]} @db]
-    (core/eval-constant ss ir c)))
+  (get (:constants @db) c))
 
 (defn predicate?
   [expr]
@@ -95,7 +102,13 @@
 (defn setexpr? [expr]
   (not (intexpr? expr)))
 
+(defn eval-constant-formula [ir-formula]
+  (into #{} (core/interpret-animator-result (lu/eval-constant-formula (:constant-state @db) ir-formula))))
+
 ;; Specter interface
+
+(defn contains-vars? [expr]
+  (su/contains-vars? (:ir @db) expr))
 
 (defn get-vars []
   (su/get-vars (:ir @db)))
@@ -133,6 +146,10 @@
 (defn set-element?
   [elem]
   (su/set-element? (:ir @db) elem))
+
+(defn simple-tuple?
+  [elem]
+  (su/simple-tuple? (:ir @db) elem))
 
 (defn create-boolname [& ids]
   (apply u/create-boolname ids))

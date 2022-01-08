@@ -29,13 +29,16 @@
   [set-expr]
   (flatten
    ((fn T [e]
-      (match e
+      (match (if (not (b/contains-vars? e)) (b/eval-constant-formula e) e)
         (elem :guard b/set-element?) (T #{elem})
         #{} (repeat (b/max-unroll-size) FALSE)
         (_ :guard b/carrier?) (repeat (b/max-unroll-size) TRUE)
 
         (enumeration-set :guard #(and (set? %) (every? b/set-element? %)))
         (vector (mapv (fn [el] (if (contains? enumeration-set el) TRUE FALSE)) (b/get-type-elems (first enumeration-set))))
+
+        (enumeration-relation :guard #(and (set? %) (b/simple-tuple? (first %))))
+        (bemap (fn [el] (if (contains? enumeration-relation el) TRUE FALSE)) (b/get-type-elem-matrix (first enumeration-relation)))
 
         (enumeration-set :guard #(and (set? %) (= 1 (count %)) (every? b/fn-call? %)))
         (T (first enumeration-set)) ;; FIXME HAck ...

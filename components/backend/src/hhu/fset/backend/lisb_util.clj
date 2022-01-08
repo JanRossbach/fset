@@ -1,7 +1,7 @@
 (ns hhu.fset.backend.lisb-util
   (:require
    [lisb.core :refer [eval-ir-formula]]
-   [lisb.prob.animator :refer [state-space!]]
+   [lisb.prob.animator :refer [state-space! get-result]]
    [lisb.translation.util :refer [ir->ast b->ir]]
    [lisb.translation.lisb2ir :refer [bmember? bcomprehension-set bexists band b=]])
   (:import
@@ -36,3 +36,8 @@
 (defn intexpr?
   [ss expr]
   (= "INTEGER" (get-type ss expr)))
+
+(defn eval-constant-formula [constant-state ir-formula]
+  (let [formula (de.prob.animator.domainobjects.ClassicalB. (ir->ast ir-formula) de.prob.animator.domainobjects.FormulaExpand/EXPAND)
+        res-map (.evalFormulas constant-state [formula])]
+    (get-result (get res-map formula))))

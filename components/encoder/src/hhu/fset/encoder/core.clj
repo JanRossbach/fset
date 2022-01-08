@@ -17,7 +17,7 @@
                   (map :name uvar)
                   uexpr))
            (catch Exception e
-             (log/info "Context Assignment " e)
+             (log/info (str "Failed at Assignment: " id val) e)
              (map (fn [v p] (ASSIGN v (BOOL p)))
                   (map :name uvar)
                   (map (fn [v] (IN (:elem v) (boolvars->set val))) uvar)))))

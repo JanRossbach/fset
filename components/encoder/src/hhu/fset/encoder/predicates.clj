@@ -78,5 +78,5 @@
          expr (unroll-expression expr)))
      pred)
     (catch Exception e
-      (log/info "Context: Predicate" e)
+      (log/info (str "Failed at Predicate: " pred) e)
       (boolvars->set pred))))

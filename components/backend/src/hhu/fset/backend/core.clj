@@ -63,9 +63,14 @@
   [ss expr]
   (match (get-type-ir ss expr)
     {:tag :power-set :set s} (m/matrix (vector (get-set-elems ss s)))
-    {:tag :relation :sets ([A B] :seq)} (m/matrix (for [a (get-set-elems ss A)]
-                                                    (for [b (get-set-elems ss B)]
-                                                      {:tag :maplet :left a :right b})))))
+    {:tag :relation :sets ([A B] :seq)}
+    (m/matrix (for [a (get-set-elems ss A)]
+                (for [b (get-set-elems ss B)]
+                  {:tag :maplet :left a :right b})))
+    {:tag :cartesian-product-or-multiplication :nums-or-sets ([A B] :seq)}
+    (m/matrix (for [a (get-set-elems ss A)]
+                (for [b (get-set-elems ss B)]
+                  {:tag :maplet :left a :right b})))))
 
 (defn eval-constant [ss ir c]
   (set (first (comprehend ss [:x] (bexists (su/get-constants ir) (band (b= :x c) (su/get-props-as-pred ir)))))))
@@ -101,10 +106,10 @@
   (match expr
     (_ :guard (partial su/carrier? ir)) true
     {:tag :relation :sets ([_ _] :seq)} true
-    {:tag :power-set :set (_ :guard type?)} true
-    {:tag :power1-set :set (_ :guard type?)} true
-    {:tag :fin :set (_ :guard type?)} true
-    {:tag :fin1 :set (_ :guard type?)} true
+    {:tag :power-set :set (_ :guard (partial type? ir))} true
+    {:tag :power1-set :set (_ :guard (partial type? ir))} true
+    {:tag :fin :set (_ :guard (partial type? ir))} true
+    {:tag :fin1 :set (_ :guard (partial type? ir))} true
     _ false))
 
 
