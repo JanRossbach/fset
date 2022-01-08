@@ -30,6 +30,9 @@
 (defn max-unroll-size []
   (:max-unroll-size (:cfg @db)))
 
+(defn unroll-invariant? []
+  (:unroll-invariant (:cfg @db)))
+
 ;; core interface
 
 (defn get-all-bools []

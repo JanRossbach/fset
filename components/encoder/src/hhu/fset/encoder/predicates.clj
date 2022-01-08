@@ -21,6 +21,10 @@
          {:tag :subset-strict :subset s :set S} (let [Ts (T s) TS (T S)] (apply AND (cons (apply OR (map (fn [a b] (AND a (NOT b))) Ts TS))
                                                                                           (map (fn [a b] (=> a b)) Ts TS))))
 
+         ;; FIXME Hack Train use case
+         {:tag :equals :left {:tag :fn-call :f f :args ([{:tag :fn-call :f g :args ([elem] :seq)}] :seq)} :right (r :guard b/set-element?)}
+         (T {:tag :equals :left {:tag :image :rel f :set {:tag :image :rel g :set #{elem}}} :right #{r}})
+
          {:tag :equals :left (l :guard b/setexpr?) :right (r :guard b/setexpr?)}  (apply AND (map <=> (T l) (T r)))
          ;; logical operators
          {:tag :and :preds ps} (apply AND (map T ps))
@@ -41,7 +45,7 @@
          ;; Member
          {:tag :member :elem (_ :guard b/unrollable-var?) :set (_ :guard b/type?)} {}
          {:tag :member :elem {:tag :fn-call :f f :args ([(arg :guard b/set-element?)] :seq)} :set S} (T {:tag :subset :sets (list {:tag :image :rel f :set #{arg}} S)})
-         {:tag :member :elem (elem :guard b/set-element?) :set s} (=TRUE (BOOL (nth (T s) (b/get-elem-index elem))))
+         {:tag :member :elem (elem :guard #(or (b/set-element? %) (b/simple-tuple? %))) :set s} (=TRUE (BOOL (nth (T s) (b/get-elem-index elem))))
 
          ;; Concrete Function Types
          ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-fn :sets ([_ _] :seq)}}
