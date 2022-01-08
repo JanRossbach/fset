@@ -36,11 +36,11 @@
          ;; Quantifiers
          {:tag :for-all :ids ids :implication {:tag :implication :preds ([P Q] :seq)}}
          (apply AND (map (fn [binding] (=> (T (b/apply-binding P binding))
-                                           (T (b/apply-binding Q binding))))
+                                          (T (b/apply-binding Q binding))))
                          (b/ids->bindings P ids)))
 
          {:tag :exists :ids ids :pred P}
-         (apply AND (map (fn [binding] (T (b/apply-binding P binding))) (b/ids->bindings P ids)))
+         (apply OR (map (fn [binding] (T (b/apply-binding P binding))) (b/ids->bindings P ids)))
 
          ;; Member
          {:tag :member :elem (_ :guard b/unrollable-var?) :set (_ :guard b/type?)} {}

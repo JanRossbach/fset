@@ -60,9 +60,9 @@ scheduler-auto-ir
 
 (pprint train-ir)
 
-(def train-auto-ir (fset/unroll-ops train-ir ))
+;(def train-auto-ir (fset/unroll-ops train-ir ))
 
-(def train-auto-ir (fset/boolencode train-ir :logging true :unroll-invariant false))
+(def train-auto-ir (fset/boolencode train-ir))
 
 (pprint train-auto-ir)
 
@@ -91,3 +91,11 @@ scheduler-auto-ir
                                  {:tag :member,
                                   :elem {:tag :maplet, :left :x, :right :y},
                                   :set {:tag :fn-call, :f :nxt, :args (:r)}})}})}}))
+
+(unroll-predicate {:tag :member :elem {:tag :maplet :left :A :right :B} :set {:tag :fn-call :f :nxt :args '(:R1)}})
+
+(setexpr->bitvector {:tag :fn-call :f :nxt :args '(:R1)})
+
+(b/get-elem-index {:tag :maplet :left :A :right :B})
+
+(pprint (simplify-all up))

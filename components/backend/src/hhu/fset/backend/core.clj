@@ -202,7 +202,8 @@
          _ false))
 
 (defn get-elem-index [ss elem-id]
-  (first (first (filter #(= (second %) elem-id) (map-indexed vector (get-type-elems ss elem-id))))))
+  (let [elems (if (map? elem-id) (flatten (get-type-elem-matrix ss elem-id)) (get-type-elems ss elem-id))]
+    (first (first (filter #(= (second %) elem-id) (map-indexed vector elems))))))
 
 (defn find-guards
   [op id]
