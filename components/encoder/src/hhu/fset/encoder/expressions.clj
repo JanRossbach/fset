@@ -25,7 +25,23 @@
 (defn bemap [f & bms]
   (apply mapv (fn [& rows] (apply mapv (fn [& elems] (apply f elems)) rows)) bms))
 
+(defn override-matrix
+  "
+  Returns a matrix of the same shape as the input with a predicate on each row,
+  that is true iff the entire row is false. Used for relational override.
+  "
+  [mat]
+  (mapv (fn [row] (let [p (NOT (apply OR row))] (vec (repeat (count row) p)))) mat))
+
 (defn setexpr->bitvector
+  "
+  Takes a set expression and returns a predicate sequence or cardinality |Type(set-expr)|.
+  If the predicate evaluates to true, the element is in the given set.
+  If the given IR expression is infinite or not supported, an exception is thrown.
+
+  In: IR map representing a set expression.
+  Out: IR pred seq
+  "
   [set-expr]
   (flatten
    ((fn T [e]
@@ -43,7 +59,7 @@
         (enumeration-set :guard #(and (set? %) (= 1 (count %)) (every? b/fn-call? %)))
         (T (first enumeration-set)) ;; FIXME HAck ...
 
-            ;; Operators
+        ;; Operators
         {:tag :union :sets ([A B] :seq)} (bmadd (T A) (T B))
         {:tag :intersection :sets ([A B] :seq)} (bemul (T A) (T B))
         {:tag :difference :sets ([A B] :seq)} (bmdiff (T A) (T B))
@@ -51,7 +67,8 @@
         {:tag :intersect-sets :set-of-sets ss} (apply bemul (map T ss))
         {:tag :sub :nums ns} (T {:tag :difference :sets ns})
 
-             ;; Relations
+        ;; Relations
+        {:tag :id :set sete} (bemap (fn [{:keys [left right]}] (if (= left right) TRUE FALSE)) (b/get-type-elem-matrix sete))
         {:tag :inverse :rel r} (bmtranspose (T r))
         {:tag :image :rel r :set s} (bmmul (T s) (T r))
         {:tag :fn-call :f f :args ([(args :guard b/set-element?)] :seq)} (T {:tag :image :rel f :set #{args}})
@@ -62,19 +79,22 @@
         {:tag :range-restriction :set s :rel r} (bmtranspose (T {:tag :domain-restriction :set s :rel {:tag :inverse :rel r}}))
         {:tag :domain-subtraction :set s :rel r} (mapv (fn [el row] (mapv (fn [elem] (AND (NOT el) elem)) row)) (first (T s)) (T r))
         {:tag :range-subtraction :set s :rel r} (bmtranspose (T {:tag :domain-subtraction :set s :rel {:tag :inverse :rel r}}))
+        {:tag :composition :rels rels} (reduce bmmul (map T rels))
+        {:tag :iterate :rel rel :num num} (nth (iterate (partial bmmul rel) rel) num)
+        {:tag :override :rels ([A B] :seq)} (bmadd (T B) (bemul (T A) (override-matrix B)))
 
-            ;; Variables
+        ;; Variables
         (variable :guard b/unrollable-var?)
         (bemap (fn [elem] (=TRUE (b/create-boolname variable elem))) (b/get-type-elem-matrix variable))
 
         (c :guard #(and (b/constant? %) (b/unrollable? %)))
         (let [ec (b/eval-constant c)] (bemap (fn [elem] (if (contains? ec elem) TRUE FALSE)) (b/get-type-elem-matrix c)))
 
-        ;; Other Expressions defining sets
-        (:or
-         {:tag (:or :lambda :comprehension-set)}
-         (_ :guard #(and (b/variable? %) (not (b/unrollable-var? %)))))
-        (bemap (fn [elem] (IN elem e)) (b/get-type-elem-matrix e))
+        ;; Other Expressions defining sets FIXME
+        ;; (:or
+        ;;  {:tag (:or :lambda :comprehension-set)}
+        ;;  (_ :guard #(and (b/variable? %) (not (b/unrollable-var? %)))))
+        ;; (bemap (fn [elem] (IN elem e)) (b/get-type-elem-matrix e))
 
         _ (throw (ex-info "Unsupported Expression found!" {:expr set-expr
                                                            :failed-because e}))))
