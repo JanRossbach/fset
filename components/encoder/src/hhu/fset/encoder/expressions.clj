@@ -25,14 +25,6 @@
 (defn bemap [f & bms]
   (apply mapv (fn [& rows] (apply mapv (fn [& elems] (apply f elems)) rows)) bms))
 
-(defn override-matrix
-  "
-  Returns a matrix of the same shape as the input with a predicate on each row,
-  that is true iff the entire row is false. Used for relational override.
-  "
-  [mat]
-  (mapv (fn [row] (let [p (NOT (apply OR row))] (vec (repeat (count row) p)))) mat))
-
 (defn setexpr->bitvector
   "
   Takes a set expression and returns a predicate sequence or cardinality |Type(set-expr)|.
@@ -68,6 +60,7 @@
         {:tag :sub :nums ns} (T {:tag :difference :sets ns})
 
         ;; Relations
+        {:tag :cartesian-product :sets sets} (reduce bmadd (map T sets))
         {:tag :id :set sete} (bemap (fn [{:keys [left right]}] (if (= left right) TRUE FALSE)) (b/get-type-elem-matrix sete))
         {:tag :inverse :rel r} (bmtranspose (T r))
         {:tag :image :rel r :set s} (bmmul (T s) (T r))
@@ -81,8 +74,7 @@
         {:tag :range-subtraction :set s :rel r} (bmtranspose (T {:tag :domain-subtraction :set s :rel {:tag :inverse :rel r}}))
         {:tag :composition :rels rels} (reduce bmmul (map T rels))
         {:tag :iterate :rel rel :num num} (nth (iterate (partial bmmul rel) rel) num)
-        {:tag :override :rels ([A B] :seq)} (bmadd (T B) (bemul (T A) (override-matrix B)))
-
+        {:tag :override :rels ([A B] :seq)} (T {:tag :union :sets [B {:tag :domain-subtraction :set {:tag :dom :rel B} :rel A}]})
         ;; Variables
         (variable :guard b/unrollable-var?)
         (bemap (fn [elem] (=TRUE (b/create-boolname variable elem))) (b/get-type-elem-matrix variable))

@@ -2,6 +2,7 @@
   (:require
    [hhu.fset.dsl.interface :refer [AND FALSE AND TRUE NOT]]
    [clojure.core.match :refer [match]]
+   [hhu.fset.backend.interface :as b]
    [com.rpl.specter :as s]))
 
 (defn simplify-formula
@@ -23,6 +24,7 @@
     {:tag :parallel-sub :subs (substitutions :guard #(= (count %) 1))} (first substitutions)
     {:tag :parallel-sub :subs (_ :guard empty?)} s/NONE
     {:tag :select :clauses ([outer-guard {:tag :select :clauses ([inner-guard & r] :seq)}] :seq)} {:tag :select :clauses (cons (AND outer-guard inner-guard) r)}
+    {:tag :select :clauses ([(_ :guard #(= % TRUE)) action] :seq)} action
     {:tag :if-expr :cond (_ :guard #(= % TRUE)) :then then} then
     {:tag :if-expr :cond (_ :guard #(= % FALSE)) :else else} else
     {:tag :implication :preds ([(_ :guard #(= % TRUE)) B] :seq)} B
@@ -33,6 +35,7 @@
     {:tag :equivalence :preds ([(_ :guard #(= % FALSE)) B] :seq)} (NOT B)
     {:tag :equivalence :preds ([A (_ :guard #(= % TRUE))] :seq)} A
     {:tag :equivalence :preds ([A (_ :guard #(= % FALSE))] :seq)} (NOT A)
+    {:tag :any :ids ([(_ :guard b/set-element?)] :seq) :pred p :subs s} {:tag :select :clauses (cons p s)}
     _ nil))
 
 (defn- simplify-ir
@@ -47,6 +50,25 @@
   [ir]
   (loop [IR ir]
     (let [next-ir (simplify-ir IR)]
+      (if (= IR next-ir)
+        next-ir
+        (recur next-ir)))))
+
+(defn replace-function-call [expr]
+  (match expr
+    {:tag :member :elem {:tag :fn-call :f f :args ([(arg :guard b/set-element?)] :seq)} :set S} {:tag :subset :sets (list {:tag :image :rel f :set #{arg}} S)}
+    ;{:tag :equals :left {:tag :fn-call} :right r} ()
+    ;{:tag :fn-call, :f f, :args '({:tag :fn-call, :f :fst, :args (:R3)})} ()
+    ))
+
+(defn- replace-fcalls-ir
+  [ir]
+  (s/transform [(s/walker replace-function-call)] replace-function-call ir))
+
+(defn replace-all-function-calls
+  [ir]
+  (loop [IR ir]
+    (let [next-ir (replace-fcalls-ir IR)]
       (if (= IR next-ir)
         next-ir
         (recur next-ir)))))
