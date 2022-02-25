@@ -42,5 +42,5 @@ projects/**/pom.xml
 TODOs.org
 
 # Resurces
-components/encoder/resources/encoder/**
-*.prob
+**/*.prob
+**/*.mch
