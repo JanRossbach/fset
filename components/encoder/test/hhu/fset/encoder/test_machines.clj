@@ -3,7 +3,7 @@
 
 (def mch-dir "components/encoder/resources/encoder/test/")
 
-(def empty-ir {:tag :machine, :clauses '(), :name :Empty})
+(def empty-ir {:tag :machine, :machine-clauses '(), :name :empty, :args []})
 
 (def scheduler (b->ir (slurp (str mch-dir "scheduler.mch"))))
 (def numbers (b->ir (slurp (str mch-dir "Numbers.mch"))))

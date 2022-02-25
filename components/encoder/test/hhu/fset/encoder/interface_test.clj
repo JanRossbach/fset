@@ -9,6 +9,7 @@
 (def test-config
   {:max-unroll-size 200
    :unroll-invariant true
+   :unroll-sub true
    :simplify-result true
    :deff-set-size 2
    :logging false
@@ -27,8 +28,9 @@
     (is (not= scheduler (boolencode scheduler)))))
 
 (deftest valid-B-machine-test
-  (is (string? (ir->b (boolencode scheduler))) "The IR can be translated into a B machine.")
-  (is (= 36 (:states (model-check (b->ir (ir->b (boolencode scheduler)))))) "The transformed scheduler has the correct number of states."))
+  (let [encoded-scheduler (boolencode scheduler)]
+    (is (string? (ir->b encoded-scheduler)) "The IR can be translated into a B machine.")
+    (is (= 36 (:states (model-check (b->ir (ir->b encoded-scheduler))))) "The transformed scheduler has the correct number of states.")))
 
 (deftest numbers-test
   (is (= numbers (boolencode numbers)) "A Machine without any Sets should not change in any Way."))

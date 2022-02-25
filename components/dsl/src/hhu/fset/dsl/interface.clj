@@ -1,6 +1,6 @@
 (ns hhu.fset.dsl.interface
   (:require
-   [lisb.translation.lisb2ir :refer [b= bpred->bool band bor bnot bequivalence bimplication bsubset? bmember? bif-expr bassign b+ b<= b>= bunion]]
+   [lisb.translation.lisb2ir :refer [b= bpred->bool band bor bnot bequivalence bimplication bmember? bif-expr bassign b+ b<= b>= bunion]]
    [clojure.core.matrix :as m]))
 
 (def TRUE
@@ -31,12 +31,6 @@
 (defn EQUALS [l r]
   (b= l r))
 
-(defn SUBSET [sub set]
-  (bsubset? sub set))
-
-(defn =FALSE [p]
-  (b= p false))
-
 (defn =TRUE [p]
   (b= p true))
 
@@ -60,7 +54,8 @@
 (defn MACHINE [name clauses]
   {:tag :machine
    :name name
-   :machine-clauses clauses})
+   :machine-clauses clauses
+   :args []})
 
 (defn CARDINALITY [PRED elems]
   (apply b+ (map (fn [e] (IF (PRED e) 1 0)) elems)))

@@ -9,6 +9,11 @@
 
 (defonce db (atom {}))
 
+(defn make-set [x]
+  (if (coll? x)
+    (set x)
+    #{x}))
+
 (defn setup-backend
   [ir config]
   (let [new-ir (su/replace-def-sets-with-enum-sets (:deff-set-size config) ir)
@@ -23,7 +28,7 @@
                   :ir new-ir
                   :ss ss
                   :constant-state cs
-                  :constants (into {} (for [[id-obj v-obj] constants] [(keyword (.toString id-obj)) (set (core/interpret-animator-result (lisb.prob.animator/get-result v-obj)))]))
+                  :constants (into {} (for [[id-obj v-obj] constants] [(keyword (.toString id-obj)) (make-set (core/interpret-animator-result (lisb.prob.animator/get-result v-obj)))]))
                   :cfg config)))
     new-ir))
 

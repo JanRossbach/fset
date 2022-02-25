@@ -1,50 +1,13 @@
 (ns hhu.fset.encoder.core
   (:require
-   [hhu.fset.dsl.interface :refer [MACHINE AND BOOL BOOLDEFS ASSIGN AND IN]]
-   [hhu.fset.encoder.expressions :refer [unroll-expression boolvars->set]]
+   [hhu.fset.dsl.interface :refer [MACHINE AND BOOLDEFS AND]]
+   [hhu.fset.encoder.expressions :refer [boolvars->set]]
+   [hhu.fset.encoder.subsitutions :refer [unroll-sub]]
    [clojure.core.match :refer [match]]
    [taoensso.timbre :as log]
    [hhu.fset.encoder.predicates :refer [unroll-predicate]]
    [hhu.fset.simplifier.interface :refer [simplify-all]]
    [hhu.fset.backend.interface :as b]))
-
-(defn unroll-id-val
-  [[id val]]
-  (if (b/unrollable-var? id)
-    (let [uvar (b/unroll-variable id)]
-      (try (let [uexpr (unroll-expression val)]
-             (map (fn [v p] (ASSIGN v (BOOL p)))
-                  (map :name uvar)
-                  uexpr))
-           (catch Exception e
-             (log/info (str "Failed at Assignment: " id val) e)
-             (map (fn [v p] (ASSIGN v (BOOL p)))
-                  (map :name uvar)
-                  (map (fn [v] (IN (:elem v) (boolvars->set val))) uvar)))))
-    (list (ASSIGN id (boolvars->set val)))))
-
-(defn unpack-fn-override
-  [[id val]]
-  (match id
-         {:tag :fn-call :f fid :args args} [fid {:tag :override :rels (list fid #{{:tag :maplet :left args :right val}})}]
-         _ [id val]))
-
-
-(defn unroll-sub
-  [sub]
-  (if (not (b/unroll-sub?))
-    sub
-    ((fn T [e]
-       (match e
-         {:tag :parallel-sub :subs substitutions} {:tag :parallel-sub :subs (map T substitutions)}
-         {:tag :let-sub :id-vals id-vals :subs subs} {:tag :parallel-sub :subs (map (fn [sub] (T (b/apply-binding sub (partition 2 id-vals)))) subs)}
-         {:tag :if-sub :cond condition :then then :else else} {:tag :if-sub :cond (unroll-predicate condition) :then (T then) :else (T else)}
-         {:tag :select :clauses clauses} {:tag :select :clauses (mapcat (fn [[P S]] [(unroll-predicate P) (T S)]) (partition 2 clauses))}
-         {:tag :any :ids _ :pred _ :subs then} {:tag :parallel-sub :subs (map T then)}
-         {:tag :assignment :id-vals id-vals} {:tag :parallel-sub :subs (mapcat unroll-id-val (map unpack-fn-override (partition 2 id-vals)))}
-         {:tag :becomes-element-of :ids ids :set sete} {:tag :becomes-element-of :ids ids :set (boolvars->set sete)}
-         _ e))
-     sub)))
 
 (defn add-guards
   [op guards]
@@ -68,7 +31,6 @@
              :body
              (b/apply-binding binding)
              unroll-sub)})
-
 
 (defn unroll-operation
   [op]
