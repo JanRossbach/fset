@@ -13,6 +13,8 @@
 (def SETS (s/path [(CLAUSE :sets) :values s/ALL]))
 (defn OPERATION [name] (s/path [(CLAUSE :operations) :values s/ALL #(= (:name %) name)]))
 
+
+
 (defn get-vars [ir]
   (s/select [VARIABLES s/ALL] ir))
 
@@ -91,3 +93,8 @@
   [ir expr]
   (let [vars (set (get-vars ir))]
     (seq (s/select [(s/walker #(contains? vars %))] expr))))
+
+(defn num-ops
+  "Returns the number of operations in the given machine."
+  [ir]
+  (count (s/select [(CLAUSE :operations) :values s/ALL] ir)))

@@ -30,6 +30,15 @@
                     (map (fn [v] (IN (:elem v) (boolvars->set val))) uvar)))))
       (list (ASSIGN id (boolvars->set val))))))
 
+(defn unroll-becomes
+  [id pred]
+  (if (b/unrollable-var? id)
+    (let [uvar (b/unroll-variable id)
+          upred (unroll-predicate pred)]
+      (map (fn [v] {:tag :becomes-such :ids (list v) :pred upred})
+           (map :name uvar)))
+    (list {:tag :becomes-such :ids (list id) :pred (boolvars->set pred)})))
+
 (defn unroll-sub
   [sub]
   (if (not (b/unroll-sub?))
@@ -37,11 +46,16 @@
     ((fn T [e]
        (match e
          {:tag :parallel-sub :subs substitutions} {:tag :parallel-sub :subs (map T substitutions)}
+         {:tag :sequential-substitution :subs substitutions} {:tag :sequential-substitution :subs (map T substitutions)}
          {:tag :let-sub :id-vals id-vals :subs subs} {:tag :parallel-sub :subs (map (fn [sub] (T (b/apply-binding sub (partition 2 id-vals)))) subs)}
+         {:tag :precondition :pred pred :subs substitutions} {:tag :precondition :pred (unroll-predicate pred) :subs (map T substitutions)}
+         {:tag :assert :pred pred :subs substitutions} {:tag :assert :pred (unroll-predicate pred) :subs (map T substitutions)}
+         {:tag :choice :subs substitutions} {:tag :choice :subs (map T substitutions)}
          {:tag :if-sub :cond condition :then then :else else} {:tag :if-sub :cond (unroll-predicate condition) :then (T then) :else (T else)}
          {:tag :select :clauses clauses} {:tag :select :clauses (mapcat (fn [[P S]] [(unroll-predicate P) (T S)]) (partition 2 clauses))}
          {:tag :any :ids _ :pred _ :subs then} {:tag :parallel-sub :subs (map T then)}
          {:tag :assignment :id-vals id-vals} {:tag :parallel-sub :subs (mapcat unroll-id-val (partition 2 id-vals))}
          {:tag :becomes-element-of :ids ids :set sete} {:tag :becomes-element-of :ids ids :set (boolvars->set sete)}
+         {:tag :becomes-such :ids ([id] :seq) :pred pred} {:tag :parallel-sub :subs (unroll-becomes id pred)}
          _ e))
      sub)))

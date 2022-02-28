@@ -33,7 +33,7 @@
         (_ :guard set?) (map interpret-animator-result result)
         (_ :guard char?) (keyword result)
         nil '())
-      result)))
+      (if (string? result) (keyword result) result))))
 
 (defn comprehend
   [ss ids pred]
@@ -64,7 +64,7 @@
 (defn get-type-elem-matrix
   [ss expr]
   (match (get-type-ir ss expr)
-    {:tag :power-set :set s} (m/matrix (vector (get-set-elems ss s)))
+    {:tag :power-set :set S} (m/matrix (vector (get-set-elems ss S)))
     {:tag :relation :sets ([A B] :seq)}
     (m/matrix (for [a (get-set-elems ss A)]
                 (for [b (get-set-elems ss B)]
@@ -72,7 +72,8 @@
     {:tag :cartesian-product-or-multiplication :nums-or-sets ([A B] :seq)}
     (m/matrix (for [a (get-set-elems ss A)]
                 (for [b (get-set-elems ss B)]
-                  {:tag :maplet :left a :right b})))))
+                  {:tag :maplet :left a :right b})))
+    S (m/matrix (vector (get-set-elems ss S)))))
 
 (defn eval-constant [ss ir c]
   (set (first (comprehend ss [:x] (bexists (su/get-constants ir) (band (b= :x c) (su/get-props-as-pred ir)))))))

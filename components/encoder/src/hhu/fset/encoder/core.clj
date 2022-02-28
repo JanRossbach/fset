@@ -35,10 +35,13 @@
 (defn unroll-operation
   [op]
   (log/info (str "Unrolling Operation " (:name op)))
-  (let [bindings (b/op->bindings op)]
-    (if (seq bindings)
-      (map (partial new-op op) bindings)
-      (list (assoc op :body (unroll-sub (:body op)))))))
+  (try (let [bindings (b/op->bindings op)]
+         (if (seq bindings)
+           (map (partial new-op op) bindings)
+           (list (assoc op :body (unroll-sub (:body op))))))
+       (catch Exception e
+         (log/info (str "Failed translating Operation: " op) e)
+         (list (boolvars->set op)))))
 
 (defn unroll-clause
   [c]

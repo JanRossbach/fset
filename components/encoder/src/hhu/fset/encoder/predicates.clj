@@ -20,8 +20,6 @@
          {:tag :subset :sets ([s S] :seq)} (apply AND (map (fn [a b] (=> a b)) (T s) (T S)))
          {:tag :subset-strict :subset s :set S} (let [Ts (T s) TS (T S)] (apply AND (cons (apply OR (map (fn [a b] (AND a (NOT b))) Ts TS))
                                                                                           (map (fn [a b] (=> a b)) Ts TS))))
-
-         ;; FIXME Hack Train use case
          {:tag :equals :left {:tag :fn-call :f f :args ([{:tag :fn-call :f g :args ([elem] :seq)}] :seq)} :right (r :guard b/set-element?)}
          (T {:tag :equals :left {:tag :image :rel f :set {:tag :image :rel g :set #{elem}}} :right #{r}})
 

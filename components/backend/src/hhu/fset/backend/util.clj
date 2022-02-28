@@ -4,7 +4,8 @@
 (defn- id->str [id]
   (match id
          {:tag :maplet :left l :right r} (str (id->str l) (id->str r))
-         (k :guard keyword?) (name k)))
+         (k :guard keyword?) (name k)
+         _ (str id)))
 
 (defn create-boolname [& ids]
   (keyword (apply str (map id->str ids))))

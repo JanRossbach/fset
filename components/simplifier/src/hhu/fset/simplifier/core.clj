@@ -9,7 +9,7 @@
   [formula]
   (match formula
     {:tag :not :pred {:tag :not :pred p}} p
-    {:tag :pred->bool :pred {:tag :equals :left true :right false}} {:tag :false} ;; We can't return false or the walker breaks but we wan't the value false
+    {:tag :pred->bool :pred {:tag :equals :left true :right false}} {:tag :false} ;; We can't return false or the walker breaks but we want the value false
     {:tag :pred->bool :pred {:tag :equals :left true :right true}} true
     {:tag :not :pred {:tag :equals :left true :right true}} FALSE
     {:tag :not :pred {:tag :equals :left true :right false}} TRUE

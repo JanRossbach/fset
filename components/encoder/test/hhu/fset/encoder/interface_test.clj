@@ -24,11 +24,8 @@
     (is (= empty-ir (boolencode empty-ir)))))
 
 (deftest scheduler-machine-test
-  (testing "The scheduler machine should be changed in some way"
-    (is (not= scheduler (boolencode scheduler)))))
-
-(deftest valid-B-machine-test
   (let [encoded-scheduler (boolencode scheduler)]
+    (is (not= scheduler encoded-scheduler) "The scheduler machine should be changed in some way")
     (is (string? (ir->b encoded-scheduler)) "The IR can be translated into a B machine.")
     (is (= 36 (:states (model-check (b->ir (ir->b encoded-scheduler))))) "The transformed scheduler has the correct number of states.")))
 

@@ -114,7 +114,8 @@
   (not (intexpr? expr)))
 
 (defn eval-constant-formula [ir-formula]
-  (into #{} (core/interpret-animator-result (lu/eval-constant-formula (:constant-state @db) ir-formula))))
+  (let [res (core/interpret-animator-result (lu/eval-constant-formula (:constant-state @db) ir-formula))]
+    (if (coll? res) (into #{} res) #{res})))
 
 ;; Specter interface
 
@@ -164,3 +165,6 @@
 
 (defn create-boolname [& ids]
   (apply u/create-boolname ids))
+
+(defn num-ops [ir]
+  (su/num-ops ir))

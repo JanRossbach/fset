@@ -3,7 +3,8 @@
    [clojure.core.matrix :as m]
    [com.rpl.specter :as s]
    [clojure.core.match :refer [match]]
-   [hhu.fset.dsl.interface :refer [AND OR =TRUE NOT TRUE FALSE BOOL IN CARDINALITY bv->setexpr]]
+   [hhu.fset.encoder.predicates :refer [unroll-predicate]]
+   [hhu.fset.dsl.interface :refer [AND OR =TRUE NOT TRUE FALSE BOOL IN CARDINALITY bv->setexpr EQUALS]]
    [hhu.fset.backend.interface :as b]))
 
 (defn bmtranspose [bm]
@@ -38,9 +39,11 @@
   (flatten
    ((fn T [e]
       (match (if (not (b/contains-vars? e)) (b/eval-constant-formula e) e)
-        (elem :guard b/set-element?) (T #{elem})
+        (set-elem :guard b/set-element?) (T #{set-elem})
         #{} (repeat (b/max-unroll-size) FALSE)
         (_ :guard b/carrier?) (repeat (b/max-unroll-size) TRUE)
+
+        {:tag :comprehension-set :ids ([id] :seq) :pred pred} (bemap (fn [elem] (unroll-predicate (b/apply-binding pred [[id elem]]))) (b/get-type-elem-matrix e))
 
         (enumeration-set :guard #(and (set? %) (every? b/set-element? %)))
         (vector (mapv (fn [el] (if (contains? enumeration-set el) TRUE FALSE)) (b/get-type-elems (first enumeration-set))))
@@ -75,18 +78,18 @@
         {:tag :composition :rels rels} (reduce bmmul (map T rels))
         {:tag :iterate :rel rel :num num} (nth (iterate (partial bmmul rel) rel) num)
         {:tag :override :rels ([A B] :seq)} (T {:tag :union :sets [B {:tag :domain-subtraction :set {:tag :dom :rel B} :rel A}]})
+        {:tag :lambda :ids ([id] :seq) :pred pred :expr expr} (bemap (fn [{:keys [left right]}] (AND
+                                                                                                 (unroll-predicate (b/apply-binding pred [[id left]]))
+                                                                                                 (nth (T expr) (b/get-elem-index right))))
+                                                                     (b/get-type-elem-matrix e))
         ;; Variables
         (variable :guard b/unrollable-var?)
         (bemap (fn [elem] (=TRUE (b/create-boolname variable elem))) (b/get-type-elem-matrix variable))
+        (variable :guard b/variable?)
+        (bemap (fn [elem] (EQUALS variable elem)) (b/get-type-elem-matrix variable))
 
         (c :guard #(and (b/constant? %) (b/unrollable? %)))
         (let [ec (b/eval-constant c)] (bemap (fn [elem] (if (contains? ec elem) TRUE FALSE)) (b/get-type-elem-matrix c)))
-
-        ;; Other Expressions defining sets FIXME
-        ;; (:or
-        ;;  {:tag (:or :lambda :comprehension-set)}
-        ;;  (_ :guard #(and (b/variable? %) (not (b/unrollable-var? %)))))
-        ;; (bemap (fn [elem] (IN elem e)) (b/get-type-elem-matrix e))
 
         _ (throw (ex-info "Unsupported Expression found!" {:expr set-expr
                                                            :failed-because e}))))
