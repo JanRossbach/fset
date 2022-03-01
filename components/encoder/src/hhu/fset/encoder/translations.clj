@@ -125,9 +125,8 @@
          {:tag :equals :left #{} :right r} (apply AND (map NOT (T r)))
 
          {:tag :not-equals :left l :right r} (NOT (T (EQUALS l r)))
-         {:tag :subset :sets ([(_ :guard b/unrollable-var?) (_ :guard b/type?)] :seq)} {} ;; An empty map just means delete this thing
          {:tag :subset :sets ([s S] :seq)} (apply AND (map (fn [a b] (=> a b)) (T s) (T S)))
-         {:tag :subset-strict :subset s :set S} (let [Ts (T s) TS (T S)] (apply AND (cons (apply OR (map (fn [a b] (AND a (NOT b))) Ts TS))
+         {:tag :strict-subset :sets ([s S] :seq)} (let [Ts (T s) TS (T S)] (apply AND (cons (apply OR (map (fn [a b] (AND a (NOT b))) Ts TS))
                                                                                           (map (fn [a b] (=> a b)) Ts TS))))
          {:tag :equals :left {:tag :fn-call :f f :args ([{:tag :fn-call :f g :args ([elem] :seq)}] :seq)} :right (r :guard b/set-element?)}
          (T {:tag :equals :left {:tag :image :rel f :set {:tag :image :rel g :set #{elem}}} :right #{r}})
@@ -150,34 +149,9 @@
          (apply OR (map (fn [binding] (T (b/apply-binding P binding))) (b/ids->bindings P ids)))
 
          ;; Member
-         {:tag :member :elem (_ :guard b/unrollable-var?) :set (_ :guard b/type?)} {}
+         {:tag :member :elem (_ :guard b/unrollable-var?) :set (_ :guard b/type?)} TRUE
          {:tag :member :elem {:tag :fn-call :f f :args ([(arg :guard b/set-element?)] :seq)} :set S} (T {:tag :subset :sets (list {:tag :image :rel f :set #{arg}} S)})
          {:tag :member :elem (elem :guard #(or (b/set-element? %) (b/simple-tuple? %))) :set s} (=TRUE (BOOL (nth (T s) (b/get-elem-index elem))))
-
-         ;; Concrete Function Types
-         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-fn :sets ([_ _] :seq)}}
-         ;; (FUN (b/get-type-elem-matrix v))
-
-         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-fn :sets ([_ _] :seq)}}
-         ;; (TOTAL-FUN (b/get-type-elem-matrix v))
-
-         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-surjection :sets ([_ _] :seq)}}
-         ;; (let [em (b/get-type-elem-matrix v)] (AND (FUN em) (SURJECTIVE em)))
-
-         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-surjection :sets ([_ _] :seq)}}
-         ;; (let [em (b/get-type-elem-matrix v)] (AND (TOTAL-FUN em) (SURJECTIVE em)))
-
-         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-injection :sets ([_ _] :seq)}}
-         ;; (let [em (b/get-type-elem-matrix v)] (AND (FUN em) (INJECTIVE em)))
-
-         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-injection :sets ([_ _] :seq)}}
-         ;; (let [em (b/get-type-elem-matrix v)] (AND (TOTAL-FUN em) (INJECTIVE em)))
-
-         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :partial-bijection :sets ([_ _] :seq)}}
-         ;; (let [em (b/get-type-elem-matrix v)] (AND (FUN em) (BIJECTIVE em)))
-
-         ;; {:tag :member :elem (v :guard b/unrollable-var?) :set {:tag :total-bijection :sets ([_ _] :seq)}}
-         ;; (let [em (b/get-type-elem-matrix v)] (AND (TOTAL-FUN em) (BIJECTIVE em)))
 
          ;; Numbers
          {:tag :equals :left l :right r} {:tag :equals :left (T l) :right (T r)}
