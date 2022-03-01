@@ -53,22 +53,3 @@
       (if (= IR next-ir)
         next-ir
         (recur next-ir)))))
-
-(defn replace-function-call [expr]
-  (match expr
-    {:tag :member :elem {:tag :fn-call :f f :args ([(arg :guard b/set-element?)] :seq)} :set S} {:tag :subset :sets (list {:tag :image :rel f :set #{arg}} S)}
-    ;{:tag :equals :left {:tag :fn-call} :right r} ()
-    ;{:tag :fn-call, :f f, :args '({:tag :fn-call, :f :fst, :args (:R3)})} ()
-    ))
-
-(defn- replace-fcalls-ir
-  [ir]
-  (s/transform [(s/walker replace-function-call)] replace-function-call ir))
-
-(defn replace-all-function-calls
-  [ir]
-  (loop [IR ir]
-    (let [next-ir (replace-fcalls-ir IR)]
-      (if (= IR next-ir)
-        next-ir
-        (recur next-ir)))))

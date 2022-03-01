@@ -1,11 +1,9 @@
 (ns hhu.fset.encoder.core
   (:require
    [hhu.fset.dsl.interface :refer [MACHINE AND BOOLDEFS AND]]
-   [hhu.fset.encoder.expressions :refer [boolvars->set]]
-   [hhu.fset.encoder.subsitutions :refer [unroll-sub]]
+   [hhu.fset.encoder.translations :refer [boolvars->set unroll-sub unroll-predicate]]
    [clojure.core.match :refer [match]]
    [taoensso.timbre :as log]
-   [hhu.fset.encoder.predicates :refer [unroll-predicate]]
    [hhu.fset.simplifier.interface :refer [simplify-all]]
    [hhu.fset.backend.interface :as b]))
 
@@ -30,7 +28,8 @@
              lift-guards
              :body
              (b/apply-binding binding)
-             unroll-sub)})
+             unroll-sub
+             simplify-all)})
 
 (defn unroll-operation
   [op]
@@ -48,8 +47,8 @@
   (match c
     {:tag :variables :values v} {:tag :variables :values (map :name (mapcat b/unroll-variable v))}
     {:tag :invariants :values v} {:tag :invariants :values (filter #(not= % {}) (cons (BOOLDEFS (map :name (b/get-all-bools)))
-                                                                                      (if (b/unroll-invariant?) (map unroll-predicate v) (boolvars->set v))))}
-    {:tag :init :values v} {:tag :init :values (map unroll-sub v)}
+                                                                                      (if (b/unroll-invariant?) (map (comp simplify-all unroll-predicate) v) (boolvars->set v))))}
+    {:tag :init :values v} (simplify-all {:tag :init :values (map unroll-sub v)})
     {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation v)}
     {:tag :assertions :values v} {:tag :assertions :values (boolvars->set v)}
     _ c))
