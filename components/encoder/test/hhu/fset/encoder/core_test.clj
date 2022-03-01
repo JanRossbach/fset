@@ -1,10 +1,12 @@
-(ns hhu.fset.encoder.test-machines
-  (:require  [lisb.translation.util :refer [b->ir ir->b]]))
+(ns hhu.fset.encoder.core-test
+  (:require
+   [clojure.test :refer [deftest testing is]]
+   [lisb.translation.util :refer [b->ir ir->b]]
+   [hhu.fset.encoder.core :as core]))
 
 (def mch-dir "components/encoder/resources/encoder/test/")
 
 (def empty-ir {:tag :machine, :machine-clauses '(), :name :empty, :args []})
-
 (def scheduler (b->ir (slurp (str mch-dir "scheduler.mch"))))
 (def numbers (b->ir (slurp (str mch-dir "Numbers.mch"))))
 (def banking (b->ir (slurp (str mch-dir "Banking.mch"))))

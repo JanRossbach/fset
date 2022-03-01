@@ -115,7 +115,6 @@
 (defn boolvars->set [ir]
   (s/transform [(s/walker b/unrollable-var?)] boolvar->set ir))
 
-
 (defn unroll-predicate
   [pred]
   (try

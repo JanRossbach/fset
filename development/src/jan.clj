@@ -1,4 +1,4 @@
-(ns dev.jan
+(ns jan
   (:require
    [hhu.fset.lib.core :as fset]
    [clojure.pprint :refer [pprint]]
@@ -11,7 +11,6 @@
   {:max-unroll-size 200
    :unroll-invariant true
    :unroll-sub true
-   :simplify-result true
    :deff-set-size 2
    :logging false
    :excluded-vars #{}})

@@ -1,7 +1,7 @@
 MACHINE scheduler
 
 SETS
-    PID = {PID1, PID2, PID3}
+    PID
 
 VARIABLES active, ready, waiting
 
@@ -18,7 +18,7 @@ INVARIANT
 
 INITIALISATION
     active := {} || ready := {} || waiting := {}
-    
+
 
 OPERATIONS
 

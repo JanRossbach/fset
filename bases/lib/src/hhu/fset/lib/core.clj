@@ -6,7 +6,6 @@
   {:max-unroll-size 200
    :unroll-invariant true
    :unroll-sub true
-   :simplify-result false
    :deff-set-size 2
    :logging false
    :excluded-vars #{}})
@@ -15,7 +14,6 @@
   {:max-unroll-size 200
    :unroll-invariant false
    :unroll-sub false
-   :simplify-result false
    :deff-set-size 2
    :logging false
    :excluded-vars :all})

@@ -1,9 +1,7 @@
 (ns hhu.fset.backend.lisb-util
   (:require
-   [lisb.core :refer [eval-ir-formula]]
    [lisb.prob.animator :refer [state-space! get-result]]
-   [lisb.translation.util :refer [ir->ast b->ir]]
-   [lisb.translation.lisb2ir :refer [bmember? bcomprehension-set bexists band b=]])
+   [lisb.translation.util :refer [ir->ast]])
   (:import
    de.prob.animator.domainobjects.ClassicalB
    de.prob.animator.domainobjects.FormulaExpand))
@@ -14,8 +12,8 @@
           ee (ClassicalB. formula-ast FormulaExpand/TRUNCATE "")]
       (.getType (.typeCheck ss ee))))
 
-(defn get-statespace
-  [ir] (state-space! (ir->ast ir)))
+(def get-statespace
+  (memoize (fn [ir] (state-space! (ir->ast ir)))))
 
 (defn model-check [ir]
   (let [ss (get-statespace ir)
