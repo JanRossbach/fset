@@ -1,7 +1,7 @@
 MACHINE scheduler
 
 SETS
-    PID = {PID1, PID2, PID3}
+    PID = {PID1, PID2}
 
 VARIABLES active, ready, waiting
 

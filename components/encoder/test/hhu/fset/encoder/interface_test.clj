@@ -11,10 +11,8 @@
 
 (def scheduler (b->ir (slurp (str mch-dir "scheduler.mch"))))
 (def numbers (b->ir (slurp (str mch-dir "Numbers.mch"))))
-(def banking (b->ir (slurp (str mch-dir "Banking.mch"))))
 (def train (b->ir (slurp (str mch-dir "Train.mch"))))
-(def test-ir (b->ir (slurp (str mch-dir "Test.mch"))))
-
+(def demo (b->ir (slurp (str mch-dir "demo.mch"))))
 
 (def test-config
   {:max-unroll-size 200
@@ -39,10 +37,16 @@
     (is (= 36 (:states (model-check (b->ir (ir->b encoded-scheduler))))) "The transformed scheduler has the correct number of states.")))
 
 (deftest numbers-test
-  (is (= numbers (boolencode numbers)) "A Machine without any Sets should not change in any Way."))
+  (is (= (ir->b numbers) (ir->b (boolencode numbers))) "A Machine without any Sets should not change in any Way."))
 
-;; This Test takes very long to complete. Comment out for better test performance.
 (deftest train-machine-test
   (let [train-encoded (boolencode train)]
     (is (map? train-encoded) "The translation completed.")
-    (is (string? (ir->b train-encoded)) "The Train machine can be translated back to B string")))
+    (is (string? (ir->b train-encoded)) "The Train machine can be translated back to B string"))) ;; This Test takes very long to complete because of ir->b. Comment out for better test performance.
+
+(deftest demo-machine-test
+  (let [demo-encoded (boolencode demo)
+        mc-demo (model-check demo)
+        mc-enc (model-check (b->ir (ir->b demo-encoded)))]
+    (is (= (:states mc-enc) (:states mc-demo)))
+    (is (= (:transitions mc-enc) (:transitions mc-demo)))))

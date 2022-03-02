@@ -24,6 +24,7 @@
 
 (def mch-dir "components/encoder/resources/encoder/test/")
 (def scheduler (b->ir (slurp (str mch-dir "scheduler.mch"))))
+(def demo (b->ir (slurp (str mch-dir "demo.mch"))))
 
 (def test-config
   {:max-unroll-size 200
@@ -33,38 +34,175 @@
    :logging false
    :excluded-vars #{}})
 
+
+
+(deftest setexpr->bitvector-test
+  (testing "Sets via Scheduler"
+    (b/setup-backend scheduler test-config)
+    (are [x y] (= x (mapv (comp ir->b simplify-all) (trans/setexpr->bitvector (b->ir (str "#EXPRESSION" y)))))
+      ["TRUE=TRUE" "TRUE=TRUE"]
+      "PID"
+
+      ["activePID1=TRUE" "activePID2=TRUE"]
+      "active"
+
+      ["activePID1=TRUE" "activePID2=TRUE"]
+      "{x|x:PID & x:active}"
+
+      ["TRUE=TRUE" "TRUE=FALSE"]
+      "{PID1}"
+
+      ["TRUE=FALSE" "TRUE=TRUE" "TRUE=TRUE" "TRUE=FALSE"]
+      "{PID1|->PID2,PID2|->PID1}"
+
+      ["activePID1=TRUE or readyPID1=TRUE"
+       "activePID2=TRUE or readyPID2=TRUE"]
+      "active\\/ready"
+
+      ["activePID1=TRUE & readyPID1=TRUE" "activePID2=TRUE & readyPID2=TRUE"]
+      "active/\\ready"
+
+      ["activePID1=TRUE & not(readyPID1=TRUE)"
+       "activePID2=TRUE & not(readyPID2=TRUE)"]
+      "active-ready"
+
+      ["readyPID1=TRUE or waitingPID1=TRUE or activePID1=TRUE"
+       "readyPID2=TRUE or waitingPID2=TRUE or activePID2=TRUE"]
+      "union({active,ready,waiting})"
+
+      ["readyPID1=TRUE & waitingPID1=TRUE & activePID1=TRUE"
+       "readyPID2=TRUE & waitingPID2=TRUE & activePID2=TRUE"]
+      "inter({active,ready,waiting})"))
+  (testing "Relations via Demo"
+    (b/setup-backend demo test-config)
+    (are [x y] (= x (mapv (comp ir->b simplify-all) (trans/setexpr->bitvector (b->ir (str "#EXPRESSION" y)))))
+      ["TRUE=TRUE" "TRUE=TRUE" "TRUE=TRUE" "TRUE=TRUE"]
+      "S*S"
+
+      ["rS1S1=TRUE" "rS1S2=TRUE" "rS2S1=TRUE" "rS2S2=TRUE"]
+      "id(r)"
+
+      ["rS1S1=TRUE" "rS2S1=TRUE" "rS1S2=TRUE" "rS2S2=TRUE"]
+      "r~"
+
+      ["rS1S1=TRUE" "rS1S2=TRUE"]
+      "r[S1]"
+
+      ["rS1S1=TRUE" "rS1S2=TRUE"]
+      "r(S1)"
+
+      ["rS1S1=TRUE or rS1S2=TRUE" "rS2S1=TRUE or rS2S2=TRUE"]
+      "dom(r)"
+
+      ["rS1S1=TRUE or rS2S1=TRUE" "rS1S2=TRUE or rS2S2=TRUE"]
+      "ran(r)"
+
+      ["rS1S1=TRUE" "rS1S2=TRUE" "TRUE=FALSE" "TRUE=FALSE"]
+      "{S1}<|r"
+
+      ["TRUE=FALSE" "TRUE=FALSE" "rS2S1=TRUE" "rS2S2=TRUE"]
+      "{S1}<<|r"
+
+      ["rS1S1=TRUE" "TRUE=FALSE" "rS2S1=TRUE" "TRUE=FALSE"]
+      "r|>{S1}"
+
+      ["TRUE=FALSE" "rS1S2=TRUE" "TRUE=FALSE" "rS2S2=TRUE"]
+      "r|>>{S1}"
+
+      ["rS1S1=TRUE & rS1S1=TRUE or (rS1S2=TRUE & rS2S1=TRUE)"
+       "rS1S1=TRUE & rS1S2=TRUE or (rS1S2=TRUE & rS2S2=TRUE)"
+       "rS2S1=TRUE & rS1S1=TRUE or (rS2S2=TRUE & rS2S1=TRUE)"
+       "rS2S1=TRUE & rS1S2=TRUE or (rS2S2=TRUE & rS2S2=TRUE)"]
+      "(r;r)"
+
+      ["rS1S1=TRUE or rS1S2=TRUE or (rS1S1=TRUE or rS2S1=TRUE)"
+       "rS2S1=TRUE or rS2S2=TRUE or (rS1S2=TRUE or rS2S2=TRUE)"]
+      "iterate(r,0)"
+
+      ["rS1S1=TRUE & (rS1S1=TRUE or rS1S2=TRUE or (rS1S1=TRUE or rS2S1=TRUE))"
+       "rS1S1=TRUE & (rS2S1=TRUE or rS2S2=TRUE or (rS1S2=TRUE or rS2S2=TRUE))"
+       "rS2S1=TRUE & (rS1S1=TRUE or rS1S2=TRUE or (rS1S1=TRUE or rS2S1=TRUE))"
+       "rS2S1=TRUE & (rS2S1=TRUE or rS2S2=TRUE or (rS1S2=TRUE or rS2S2=TRUE))"]
+      "iterate(r,1)"
+
+      ["TRUE=FALSE" "TRUE=TRUE" "rS2S1=TRUE" "rS2S2=TRUE"]
+      "r<+{S1|->S2}")))
+
+
 (deftest unroll-predicate-test
-  (b/setup-backend scheduler test-config)
-  (are [x y] (= x (ir->b (simplify-all (trans/unroll-predicate (b->ir y)))))
-    "not(activePID1=TRUE or readyPID1=TRUE) & not(activePID2=TRUE or readyPID2=TRUE) & not(activePID3=TRUE or readyPID3=TRUE)"
-    "#PREDICATEactive\\/ready={}"
+  (testing "Scheduler"
+    (b/setup-backend scheduler test-config)
+    (are [x y] (= x (ir->b (simplify-all (trans/unroll-predicate (b->ir (str "#PREDICATE" y))))))
+      "not(activePID1=TRUE or readyPID1=TRUE) & not(activePID2=TRUE or readyPID2=TRUE)"
+      "active\\/ready={}"
 
-    "not(activePID1=TRUE or readyPID1=TRUE) & not(activePID2=TRUE or readyPID2=TRUE) & not(activePID3=TRUE or readyPID3=TRUE)"
-    "#PREDICATE{}=active\\/ready"
+      "not(activePID1=TRUE or readyPID1=TRUE) & not(activePID2=TRUE or readyPID2=TRUE)"
+      "{}=active\\/ready"
 
-    "not(not(activePID1=TRUE or readyPID1=TRUE) & not(activePID2=TRUE or readyPID2=TRUE) & not(activePID3=TRUE or readyPID3=TRUE))"
-    "#PREDICATE{}/=active\\/ready"
+      "not(not(activePID1=TRUE or readyPID1=TRUE) & not(activePID2=TRUE or readyPID2=TRUE))"
+      "{}/=active\\/ready"
 
-    "TRUE=TRUE"
-    "#PREDICATEactive<:PID"
+      "TRUE=TRUE"
+      "active<:PID"
 
-    "(activePID1=TRUE => readyPID1=TRUE) & (activePID2=TRUE => readyPID2=TRUE) & (activePID3=TRUE => readyPID3=TRUE)"
-    "#PREDICATEactive<:ready"
+      "(activePID1=TRUE => readyPID1=TRUE) & (activePID2=TRUE => readyPID2=TRUE)"
+      "active<:ready"
 
-    "activePID1=TRUE & not(readyPID1=TRUE) or (activePID2=TRUE & not(readyPID2=TRUE)) or (activePID3=TRUE & not(readyPID3=TRUE)) & (activePID1=TRUE => readyPID1=TRUE) & (activePID2=TRUE => readyPID2=TRUE) & (activePID3=TRUE => readyPID3=TRUE)"
-    "#PREDICATEactive<<:ready"
+      "activePID1=TRUE & not(readyPID1=TRUE) or (activePID2=TRUE & not(readyPID2=TRUE)) & (activePID1=TRUE => readyPID1=TRUE) & (activePID2=TRUE => readyPID2=TRUE)"
+      "active<<:ready"
 
-    "activePID1=TRUE <=> readyPID1=TRUE & activePID2=TRUE <=> readyPID2=TRUE & activePID3=TRUE <=> readyPID3=TRUE"
-    "#PREDICATEactive=ready"
+      "activePID1=TRUE <=> readyPID1=TRUE & activePID2=TRUE <=> readyPID2=TRUE"
+      "active=ready"
 
-    "activePID1=TRUE & activePID2=TRUE & activePID3=TRUE"
-    "#PREDICATE!(x).(x:PID => x:active)"
+      "activePID1=TRUE & activePID2=TRUE"
+      "!(x).(x:PID => x:active)"
 
-    "activePID1=TRUE or activePID2=TRUE or activePID3=TRUE"
-    "#PREDICATE#(x).(x:PID & x:active)"
+      "activePID1=TRUE or activePID2=TRUE"
+      "#(x).(x:PID & x:active)"
 
-    "activePID1=TRUE"
-    "#PREDICATEPID1:active"
+      "activePID1=TRUE"
+      "PID1:active"
 
-    "1+1=3-2"
-    "#PREDICATE 1+1=3-2"))
+      "1+1=3-2"
+      "1+1=3-2")))
+
+
+(deftest substitutions-test
+  (testing "Scheduler"
+    (b/setup-backend scheduler test-config)
+    (are [x y] (= x (ir->b (simplify-all (trans/unroll-sub (b->ir (str "#SUBSTITUTION" y))))))
+      "activePID1 := FALSE || activePID2 := FALSE"
+      "active:={}"
+
+      "activePID1 := TRUE || activePID2 := TRUE"
+      "active:=PID"
+
+      "activePID1 :(not(activePID1=TRUE) & not(activePID2=TRUE))  || activePID2 :(not(activePID1=TRUE) & not(activePID2=TRUE)) "
+      "active:(active={})"
+
+      "activePID1 := FALSE || activePID2 := FALSE ; readyPID1 := FALSE || readyPID2 := FALSE"
+      "active:={};ready:={}"
+
+      "activePID1 := TRUE || activePID2 := FALSE"
+      "LET x BE x=PID1 IN active:={x} END"
+
+      "PRE not(activePID1=TRUE) & not(activePID2=TRUE) THEN activePID1 := TRUE || activePID2 := TRUE END "
+      "PRE active={} THEN active:=PID END"
+
+      "ASSERT not(activePID1=TRUE) & not(activePID2=TRUE) THEN activePID1 := TRUE || activePID2 := TRUE END "
+      "ASSERT active={} THEN active:=PID END"
+
+      "IF not(activePID1=TRUE) & not(activePID2=TRUE) THEN activePID1 := TRUE || activePID2 := TRUE ELSE skip END "
+      "IF active={} THEN active:=PID ELSE skip END"
+
+      "CHOICE activePID1 := FALSE || activePID2 := FALSE OR activePID1 := TRUE || activePID2 := TRUE END "
+      "CHOICE active:={} OR active:=PID END"
+
+      "activePID1 := FALSE || activePID2 := FALSE || readyPID1 := FALSE || readyPID2 := FALSE"
+      "active:={}||ready:={}"
+
+      "SELECT not(activePID1=TRUE) & not(activePID2=TRUE) THEN activePID1 := TRUE || activePID2 := FALSE END "
+      "SELECT active={} THEN active:={PID1} END"
+
+      "activePID1 := bool(PID1:x) || activePID2 := bool(PID2:x)"
+      "ANY x WHERE x:PID THEN active:=x END")))

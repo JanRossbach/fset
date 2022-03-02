@@ -78,7 +78,9 @@
         {:tag :domain-subtraction :set s :rel r} (mapv (fn [el row] (mapv (fn [elem] (AND (NOT el) elem)) row)) (first (T s)) (T r))
         {:tag :range-subtraction :set s :rel r} (bmtranspose (T {:tag :domain-subtraction :set s :rel {:tag :inverse :rel r}}))
         {:tag :composition :rels rels} (reduce bmmul (map T rels))
-        {:tag :iterate :rel rel :num num} (nth (iterate (partial bmmul rel) rel) num)
+        {:tag :iterate :rel rel :num num} (let [Tr (T rel)
+                                                it0 (T {:tag :union :sets [{:tag :dom :rel rel} {:tag :ran :rel rel}]})]
+                                            (nth (iterate (partial bmmul Tr) it0) num))
         {:tag :override :rels ([A B] :seq)} (T {:tag :union :sets [B {:tag :domain-subtraction :set {:tag :dom :rel B} :rel A}]})
         {:tag :lambda :ids ([id] :seq) :pred pred :expr expr} (bemap (fn [{:keys [left right]}] (AND
                                                                                                  (unroll-predicate (b/apply-binding pred [[id left]]))
@@ -205,7 +207,7 @@
     ((fn T [e]
        (match e
          {:tag :parallel-sub :subs substitutions} {:tag :parallel-sub :subs (map T substitutions)}
-         {:tag :sequential-substitution :subs substitutions} {:tag :sequential-substitution :subs (map T substitutions)}
+         {:tag :sequential-sub :subs substitutions} {:tag :sequential-sub :subs (map T substitutions)}
          {:tag :let-sub :id-vals id-vals :subs subs} {:tag :parallel-sub :subs (map (fn [sub] (T (b/apply-binding sub (partition 2 id-vals)))) subs)}
          {:tag :precondition :pred pred :subs substitutions} {:tag :precondition :pred (unroll-predicate pred) :subs (map T substitutions)}
          {:tag :assert :pred pred :subs substitutions} {:tag :assert :pred (unroll-predicate pred) :subs (map T substitutions)}
