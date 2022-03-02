@@ -1,6 +1,6 @@
 (ns hhu.fset.encoder.translation-test
   (:require
-   [clojure.test :refer [deftest testing is are]]
+   [clojure.test :refer [deftest testing are]]
    [clojure.core.matrix :as m]
    [hhu.fset.simplifier.interface :refer [simplify-all]]
    [lisb.translation.util :refer [b->ir ir->b]]

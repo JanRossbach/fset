@@ -71,15 +71,6 @@
 
 results
 
-(time (def hello (fset/boolencode scheduler-ir
-                            :deff-set-size 500000
-                            :logging false
-                            :simplify-result false)))
-
-
-
-
-
 (time (b/setup-backend scheduler-ir jan-config))
 
 (pprint (fset/boolencode scheduler-ir))
@@ -92,7 +83,7 @@ results
 
 (pprint test)
 
-(def scheduler-auto-ir (fset/boolencode scheduler-ir :logging false :excluded-vars #{:active :ready :waiting} :unroll-sub false))
+(def scheduler-auto-ir (fset/boolencode scheduler-ir))
 
 (pprint (fset/unroll-ops scheduler-ir))
 

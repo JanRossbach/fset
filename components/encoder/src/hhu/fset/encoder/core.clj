@@ -46,8 +46,9 @@
   [c]
   (match c
     {:tag :variables :values v} {:tag :variables :values (map :name (mapcat b/unroll-variable v))}
-    {:tag :invariants :values v} {:tag :invariants :values (cons (BOOLDEFS (map :name (b/get-all-bools)))
-                                                                 (if (b/unroll-invariant?) (map (comp simplify-all unroll-predicate) v) (boolvars->set v)))}
+    {:tag :invariants :values v} {:tag :invariants :values (filter (fn [invar] (not (= {} invar)))
+                                                                   (cons (BOOLDEFS (map :name (b/get-all-bools)))
+                                                                         (if (b/unroll-invariant?) (map (comp simplify-all unroll-predicate) v) (boolvars->set v))))}
     {:tag :init :values v} (simplify-all {:tag :init :values (map unroll-sub v)})
     {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation v)}
     {:tag :assertions :values v} (simplify-all {:tag :assertions :values (map unroll-predicate v)})

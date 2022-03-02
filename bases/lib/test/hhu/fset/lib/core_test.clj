@@ -1,10 +1,20 @@
 (ns hhu.fset.lib.core-test
   (:require
-   [clojure.test :refer [deftest testing is]]
-   [hhu.fset.backend.interface :refer [model-check]]
-   [hhu.fset.encoder.test-machines :refer [empty-ir scheduler numbers train]]
-   [lisb.translation.util :refer [ir->b b->ir]]
+   [clojure.test :refer [deftest is]]
    [hhu.fset.lib.core :as core]))
 
-(deftest dummy-test
-  (is (= 1 1)))
+(def test-config
+  {:max-unroll-size 220
+   :unroll-invariant false
+   :unroll-sub false
+   :deff-set-size 2
+   :logging false
+   :excluded-vars #{}})
+
+(deftest config-test
+  (core/set-config! test-config)
+  (is (= test-config (core/get-config)))
+  (core/set-config-var! :deff-set-size 3)
+  (is (= 3 (:deff-set-size (core/get-config))))
+  (core/reset-config)
+  (is (not (= test-config (core/get-config)))))

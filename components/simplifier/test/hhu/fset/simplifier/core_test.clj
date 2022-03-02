@@ -1,5 +1,5 @@
 (ns hhu.fset.simplifier.core-test
-  (:require [clojure.test :refer [deftest is are testing]]
+  (:require [clojure.test :refer [deftest are testing]]
             [lisb.translation.util :refer [ir->b b->ir]]
             [hhu.fset.simplifier.core :as core]))
 

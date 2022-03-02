@@ -10,13 +10,9 @@
    [lisb.core :refer [eval-ir-formula]]
    [lisb.translation.lisb2ir :refer [bmember? bcomprehension-set bexists band b=]]))
 
-;; SETUP
-
 (defn typestring->ir
   [type-str]
-  (let [query-str (str "MACHINE scheduler\nCONSTANTS x\nPROPERTIES x:" type-str "\nEND")
-        query-ir (b->ir query-str)]
-    (first (s/select [(su/CLAUSE :properties) :values s/FIRST :set] query-ir))))
+  (b->ir (str "#EXPRESSION" type-str)))
 
 (defn get-type-ir
   [ss expr]
@@ -78,7 +74,6 @@
 (defn eval-constant [ss ir c]
   (set (first (comprehend ss [:x] (bexists (su/get-constants ir) (band (b= :x c) (su/get-props-as-pred ir)))))))
 
-
 (defn non-det-clause?
   [pattern]
   (match pattern
@@ -114,7 +109,6 @@
     {:tag :fin :set (_ :guard (partial type? ir))} true
     {:tag :fin1 :set (_ :guard (partial type? ir))} true
     _ false))
-
 
 (defn finite-type?
   [ir ss config expr]

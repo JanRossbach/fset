@@ -1,5 +1,6 @@
 (ns hhu.fset.backend.interface
   (:require
+   [lisb.prob.animator :refer [get-result]]
    [hhu.fset.backend.core :as core]
    [hhu.fset.backend.lisb-util :as lu]
    [hhu.fset.backend.specter-util :as su]
@@ -28,7 +29,7 @@
                   :ir new-ir
                   :ss ss
                   :constant-state cs
-                  :constants (into {} (for [[id-obj v-obj] constants] [(keyword (.toString id-obj)) (make-set (core/interpret-animator-result (lisb.prob.animator/get-result v-obj)))]))
+                  :constants (into {} (for [[id-obj v-obj] constants] [(keyword (.toString id-obj)) (make-set (core/interpret-animator-result (get-result v-obj)))]))
                   :cfg config)))
     new-ir))
 

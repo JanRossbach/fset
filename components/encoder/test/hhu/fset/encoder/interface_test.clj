@@ -39,10 +39,11 @@
 (deftest numbers-test
   (is (= (ir->b numbers) (ir->b (boolencode numbers))) "A Machine without any Sets should not change in any Way."))
 
-(deftest train-machine-test
-  (let [train-encoded (boolencode train)]
-    (is (map? train-encoded) "The translation completed.")
-    (is (string? (ir->b train-encoded)) "The Train machine can be translated back to B string"))) ;; This Test takes very long to complete because of ir->b. Comment out for better test performance.
+;; This Test takes very long to complete because of ir->b on a large IR. Commented out for better test performance.
+;; (deftest train-machine-test
+;;   (let [train-encoded (boolencode train)]
+;;     (is (map? train-encoded) "The translation completed.")
+;;     (is (string? (ir->b train-encoded)) "The Train machine can be translated back to B string")))
 
 (deftest demo-machine-test
   (let [demo-encoded (boolencode demo)

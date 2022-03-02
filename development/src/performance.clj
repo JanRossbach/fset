@@ -59,9 +59,9 @@
 
   (time (ir->b (boolencode train-ir)))
 
-  (experiment demo-ir 500000 1000000 100000)
+  (experiment demo-ir 800000 1100000 100000)
 
-  (experiment scheduler-ir 500000 1000000 100000)
+  (experiment scheduler-ir 800000 1000000 100000)
 
   (bench (time-n demo-ir 1000000))
 
