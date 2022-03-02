@@ -34,7 +34,7 @@
   (let [encoded-scheduler (boolencode scheduler)]
     (is (not= scheduler encoded-scheduler) "The scheduler machine should be changed in some way")
     (is (string? (ir->b encoded-scheduler)) "The IR can be translated into a B machine.")
-    (is (= 36 (:states (model-check (b->ir (ir->b encoded-scheduler))))) "The transformed scheduler has the correct number of states.")))
+    (is (= 11 (:states (model-check (b->ir (ir->b encoded-scheduler))))) "The transformed scheduler has the correct number of states.")))
 
 (deftest numbers-test
   (is (= (ir->b numbers) (ir->b (boolencode numbers))) "A Machine without any Sets should not change in any Way."))
