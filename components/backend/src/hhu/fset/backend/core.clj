@@ -24,11 +24,12 @@
     :timeout
     (if (coll? result)
       (match (first result)
-        (_ :guard string?) (sort (map keyword result))
-        (_ :guard vector?) (map (fn [[l r]] {:tag :maplet :left l :right r}) (sort-by first (map (fn [v] (mapv interpret-animator-result v)) result)))
-        (_ :guard set?) (map interpret-animator-result result)
-        (_ :guard char?) (keyword result)
-        nil '())
+             (_ :guard number?) result
+             (_ :guard string?) (sort (map keyword result))
+             (_ :guard vector?) (map (fn [[l r]] {:tag :maplet :left l :right r}) (sort-by first (map (fn [v] (mapv interpret-animator-result v)) result)))
+             (_ :guard set?) (map interpret-animator-result result)
+             (_ :guard char?) (keyword result)
+             nil '())
       (if (string? result) (keyword result) result))))
 
 (defn comprehend

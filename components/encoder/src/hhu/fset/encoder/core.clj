@@ -40,7 +40,7 @@
            (list (assoc op :body (unroll-sub (:body op))))))
        (catch Exception e
          (log/info (str "Failed translating Operation: " op) e)
-         (list (boolvars->set op)))))
+         (list (assoc op :body (unroll-sub (:body op)))))))
 
 (defn unroll-clause
   [c]
