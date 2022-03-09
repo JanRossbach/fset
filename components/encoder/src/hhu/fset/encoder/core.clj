@@ -1,5 +1,6 @@
 (ns hhu.fset.encoder.core
   (:require
+   [clojure.walk :refer [postwalk]]
    [hhu.fset.dsl.interface :refer [MACHINE AND BOOLDEFS AND]]
    [hhu.fset.encoder.translations :refer [boolvars->set unroll-sub unroll-predicate]]
    [clojure.core.match :refer [match]]
@@ -56,11 +57,11 @@
 
 (defn unroll-machine
   [{:keys [name machine-clauses]}]
-  (MACHINE name (map unroll-clause machine-clauses)))
+  (MACHINE name (doall (map unroll-clause machine-clauses))))
 
 (defn boolencode
   [ir config]
   (log/swap-config! assoc :min-level (if (:logging config)
                                        :debug
                                        :warn))
-  (unroll-machine (b/setup-backend ir config)))
+  (postwalk identity (unroll-machine (b/setup-backend ir config))))

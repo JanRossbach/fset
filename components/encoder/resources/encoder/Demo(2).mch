@@ -9,8 +9,12 @@ INITIALISATION a := {} || r := {}
 OPERATIONS
 conj(x) = SELECT x : S  THEN a := a \/ {x} END;
 disj(x) =  SELECT x : a & a/={x} THEN a:= a \ {x} END;
-override(x,y,v,w) = SELECT x:S & y:S & v:S & w:S
-                THEN
-                   r := r <+ {x|->y,w|->v}
+override(x) = SELECT x:S
+              THEN
+                 ANY y
+                 WHERE y:S
+                 THEN
+                    r := r <+ {x|->y}
+                 END
               END
 END

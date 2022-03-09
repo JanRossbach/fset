@@ -10,9 +10,9 @@
    [lisb.core :refer [eval-ir-formula]]
    [lisb.translation.lisb2ir :refer [bmember? bcomprehension-set bexists band b=]]))
 
-(defn typestring->ir
-  [type-str]
-  (b->ir (str "#EXPRESSION" type-str)))
+(def typestring->ir
+  (memoize (fn [type-str]
+             (b->ir (str "#EXPRESSION" type-str)))))
 
 (defn get-type-ir
   [ss expr]
@@ -227,7 +227,8 @@
       (conj b [id e]))))
 
 (defn ids->bindings [ir ss ids]
-  (reduce combine [] (map (fn [id] [id (get-param-elems ir ss id)]) ids)))
+  (let [idbinds (map (fn [id] (list id (get-param-elems ir ss id))) ids)]
+    (reduce combine [] idbinds)))
 
 (defn op->bindings
   [ss op]

@@ -1,6 +1,7 @@
 (ns performance
   (:require
    [criterium.core :refer [bench]]
+   [clj-memory-meter.core :as mm]
    [lisb.translation.util :refer [ir->b b->ir]]
    [hhu.fset.lib.core :refer [boolencode set-config!]]))
 
@@ -16,13 +17,11 @@
 
 (def mch-dir "components/encoder/resources/encoder/")
 
-(def train-ir (b->ir (slurp (str mch-dir "Train.mch"))))
+(def demo1-ir (b->ir (slurp (str mch-dir "Demo(1).mch"))))
 
-(def train-encoded (boolencode train-ir))
+(def demo2-ir (b->ir (slurp (str mch-dir "Demo(2).mch"))))
 
-(def scheduler-ir (b->ir (slurp (str mch-dir "scheduler.mch"))))
-
-(def demo-ir (b->ir (slurp (str mch-dir "demo.mch"))))
+(def demo4-ir (b->ir (slurp (str mch-dir "Demo(4).mch"))))
 
 (defn time-n
   [ir n]
@@ -31,8 +30,8 @@
               :max-unroll-size (inc (* n n))))
 
 (defn experiment
-  [machine min max step]
-  (for [i (range min max step)]
+  [machine]
+  (for [i (range 2 11)]
     (do
       (println "Deff-set-size: " i)
       (println "---------------")
@@ -41,28 +40,10 @@
 
 (comment
 
-  (spit (str mch-dir "Train-auto.mch") (ir->b train-encoded))
+  (experiment demo1-ir)
 
-  (bench (boolencode train-ir))
+  (experiment demo2-ir)
 
-  (bench (ir->b train-encoded))
+  (experiment demo4-ir)
 
-  (bench (ir->b (boolencode train-ir)))
-
-  (time (boolencode train-ir))
-
-  (time (ir->b train-ir))
-
-  (ir->b scheduler-ir)
-
-  (time (ir->b train-encoded))
-
-  (time (ir->b (boolencode train-ir)))
-
-  (experiment demo-ir 800000 1100000 100000)
-
-  (experiment scheduler-ir 800000 1000000 100000)
-
-  (bench (time-n demo-ir 1000000))
-
-  (time-n demo-ir 1000000))
+)

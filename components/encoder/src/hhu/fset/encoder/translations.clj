@@ -30,6 +30,7 @@
 
 (defn setexpr->bitvector
   "
+  The Expression translation function (T_e)
   Takes a set expression and returns a predicate sequence or cardinality |Type(set-expr)|.
   If the predicate evaluates to true, the element is in the given set.
   If the given IR expression is infinite or not supported, an exception is thrown.
@@ -54,7 +55,7 @@
         (bemap (fn [el] (if (contains? enumeration-relation el) TRUE FALSE)) (b/get-type-elem-matrix (first enumeration-relation)))
 
         (enumeration-set :guard #(and (set? %) (= 1 (count %)) (every? b/fn-call? %)))
-        (T (first enumeration-set)) ;; FIXME HAck ...
+        (T (first enumeration-set))
 
         ;; Operators
         {:tag :union :sets ([A B] :seq)} (bmadd (T A) (T B))
@@ -118,6 +119,10 @@
   (s/transform [(s/walker b/unrollable-var?)] boolvar->set ir))
 
 (defn unroll-predicate
+  "
+  The predicate Translation function (T_p)
+  Takes an IR predicate and returns the another, encoded, IR predicate.
+  "
   [pred]
   (try
     ((fn T [e]
