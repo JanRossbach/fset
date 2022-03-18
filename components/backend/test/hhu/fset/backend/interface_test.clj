@@ -74,4 +74,4 @@
   (is (b/set-element? :PID1))
   (is (b/simple-tuple? (b->ir "#EXPRESSIONPID1|->PID2")))
   (is :activePID1 (b/create-boolname :active :PID1))
-  (is (= 5 (b/num-ops scheduler))))
+  (is (= 5 (b/num-ops))))
