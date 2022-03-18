@@ -90,8 +90,8 @@
         ;; Variables
         (variable :guard b/unrollable-var?)
         (bemap (fn [elem] (=TRUE (b/create-boolname variable elem))) (b/get-type-elem-matrix variable))
-        (variable :guard b/variable?)
-        (bemap (fn [elem] (EQUALS variable elem)) (b/get-type-elem-matrix variable))
+        ;; (variable :guard b/variable?)
+        ;; (bemap (fn [elem] (EQUALS variable elem)) (b/get-type-elem-matrix variable))
 
         (c :guard #(and (b/constant? %) (b/unrollable? %)))
         (let [ec (b/eval-constant c)] (bemap (fn [elem] (if (contains? ec elem) TRUE FALSE)) (b/get-type-elem-matrix c)))
@@ -176,9 +176,9 @@
 (defn unpack-fn-override
   [idval]
   (match idval
-         [{:tag :fn-call :f (fid :guard b/unrollable-var?) :args (x :guard b/set-element?)} (val :guard b/set-element?)]
-         [fid {:tag :override :rels (list fid #{{:tag :maplet :left x :right val}})}]
-    _ idval))
+         ([{:tag :fn-call :f (fid :guard b/unrollable-var?) :args ([(x :guard b/set-element?)] :seq)} (val :guard b/set-element?)] :seq)
+         (list fid {:tag :override :rels (list fid #{{:tag :maplet :left x :right val}})})
+         _ idval))
 
 (defn unroll-id-val
   [idval]

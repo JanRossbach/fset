@@ -1,6 +1,7 @@
 (ns hhu.fset.lib.core
   (:require
-   [hhu.fset.encoder.interface :as encoder]))
+   [hhu.fset.encoder.interface :as encoder]
+   [hhu.fset.backend.interface :as backend]))
 
 (def default-config
   {:max-unroll-size 200
@@ -32,8 +33,30 @@
 (defn reset-config []
   (reset! config default-config))
 
+(defn make-config
+  [config kwargs]
+  (reduce (fn [cfg [k v]] (assoc cfg k v)) config (partition 2 kwargs)))
+
 (defn boolencode [ir & kwargs]
-  (encoder/boolencode ir (reduce (fn [cfg [k v]] (assoc cfg k v)) @config (partition 2 kwargs))))
+  (encoder/boolencode ir (make-config @config kwargs)))
 
 (defn unroll-ops [ir & kwargs]
-  (encoder/boolencode ir (reduce (fn [cfg [k v]] (assoc cfg k v)) unroll-ops-default-config (partition 2 kwargs))))
+  (encoder/boolencode ir (make-config unroll-ops-default-config kwargs)))
+
+(defn num-vars [ir & kwargs]
+  (backend/setup-backend ir (make-config @config kwargs))
+  (backend/num-vars))
+
+(defn num-ops [ir & kwargs]
+  (backend/setup-backend ir (make-config @config kwargs))
+  (backend/num-ops))
+
+(defn num-unrollable-vars
+  [ir & kwargs]
+  (backend/setup-backend ir (make-config @config kwargs))
+  (backend/num-unrollable-vars))
+
+(defn num-unrollable-ops
+  [ir & kwargs]
+  (backend/setup-backend ir (make-config @config kwargs))
+  (backend/num-unrollable-ops))

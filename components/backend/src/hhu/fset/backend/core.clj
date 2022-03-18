@@ -124,7 +124,7 @@
 (defn finite?
   [ir ss config expr]
   (match expr
-    {:tag :interval :from n :to m} (< (- m n) (:max-unroll-size config))
+    ;;{:tag :interval :from n :to m} (< (- m n) (:max-unroll-size config))
     {:tag :cardinality} true
     _ (finite-type? ir ss config expr)))
 
@@ -234,3 +234,9 @@
   [ss op]
   (let [ids (concat (:args op) (get-non-det-ids op))]
     (ids->bindings op ss ids)))
+
+(defn unrollable-op? [ss op]
+  (try
+    (seq (op->bindings ss op))
+    (catch Exception e
+      false)))

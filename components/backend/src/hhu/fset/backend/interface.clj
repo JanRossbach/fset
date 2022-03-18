@@ -126,6 +126,9 @@
 (defn get-vars []
   (su/get-vars (:ir @db)))
 
+(defn get-ops []
+  (su/get-ops (:ir @db)))
+
 (defn get-constants []
   (su/get-constants (:ir @db)))
 
@@ -167,5 +170,16 @@
 (defn create-boolname [& ids]
   (apply u/create-boolname ids))
 
-(defn num-ops [ir]
-  (su/num-ops ir))
+(defn num-ops []
+  (count (su/get-ops (:ir @db))))
+
+(defn num-vars []
+  (count (su/get-vars (:ir @db))))
+
+(defn num-unrollable-vars []
+  (let [{:keys [ir ss cfg]} @db]
+    (count (filter (partial core/unrollable? ir ss cfg) (su/get-vars ir)))))
+
+(defn num-unrollable-ops []
+  (let [{:keys [ir ss]} @db]
+    (count (filter (partial core/unrollable-op? ss) (su/get-ops ir)))))

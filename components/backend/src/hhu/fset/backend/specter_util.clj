@@ -18,6 +18,10 @@
 (defn get-vars [ir]
   (s/select [VARIABLES s/ALL] ir))
 
+(defn get-ops
+  [ir]
+  (s/select [(CLAUSE :operations) :values s/ALL] ir))
+
 (defn get-constants [ir]
   (s/select [CONSTANTS s/ALL] ir))
 
@@ -93,8 +97,3 @@
   [ir expr]
   (let [vars (set (get-vars ir))]
     (seq (s/select [(s/walker #(contains? vars %))] expr))))
-
-(defn num-ops
-  "Returns the number of operations in the given machine."
-  [ir]
-  (count (s/select [(CLAUSE :operations) :values s/ALL] ir)))

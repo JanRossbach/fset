@@ -4,7 +4,8 @@
    [clojure.pprint :refer [pprint]]
    [hhu.fset.simplifier.interface :refer [simplify-all]]
    [hhu.fset.backend.interface :as b]
-   [hhu.fset.encoder.translations :refer [setexpr->bitvector unroll-predicate]]
+   [hhu.fset.encoder.core :refer [unroll-operation]]
+   [hhu.fset.encoder.translations :refer [boolvar->set boolvars->set setexpr->bitvector unroll-predicate]]
    [lisb.translation.util :refer [b->ir ir->b]]))
 
 (def jan-config
@@ -17,139 +18,39 @@
 
 (def mch-dir "components/encoder/resources/encoder/")
 
-(def test-ir (b->ir (slurp (str mch-dir "Test.mch"))))
+(defn mch->ir [filename]
+  (b->ir (slurp (str mch-dir filename))))
 
-(spit (str mch-dir "Test-auto.mch") (ir->b (fset/boolencode test-ir :logging true)))
+;; Machines
 
-(def machine-pack (str mch-dir "machine-pack/"))
+(def test-ir (mch->ir "Test.mch"))
+(def scheduler-ir (mch->ir "scheduler.mch"))
+(def train-ir (mch->ir "Train.mch"))
+(def comb-ir (mch->ir "Combinations.mch"))
+(def library-ir (mch->ir "Library.mch"))
 
-(def can-bus (b->ir (slurp (str machine-pack "CAN_BUS.mch"))))
-
-(def can-bus-encoded (fset/boolencode can-bus :logging true))
-
-(spit (str mch-dir "Core.mch") (ir->b can-bus-encoded))
-
-(def demo-ir (b->ir (slurp (str mch-dir "demo.mch"))))
-
-(pprint can-bus-encoded)
-
-(pprint (setexpr->bitvector {:tag :comprehension-set,
-                             :ids [:z],
-                             :pred
-                             {:tag :and,
-                              :preds
-                              '({:tag :member, :elem :z, :set :A}
-                                {:tag :equals, :left :z, :right :y})}}))
+;; Unroll Numbers
 
 ;; Scheduler
 
-(def scheduler-ir (b->ir (slurp "components/encoder/resources/encoder/scheduler.mch"))) ;; Read in the B machine IR from a file
+(fset/num-vars scheduler-ir) ;; => 3
+(fset/num-unrollable-vars scheduler-ir) ;; => 3
 
-(def test-mch  (b->ir (slurp "components/encoder/resources/encoder/Untitled.mch")))
-
-(def demo-mch-translated (fset/boolencode test-mch :logging true))
-
-(fset/set-config! jan-config)
-
-
-(defn deff-set-size->num-ops
-  [n]
-  (let [res (time (fset/boolencode demo-ir
-                                   :deff-set-size n
-                                   :logging false
-                                   :simplify-result false))]
-    (b/num-ops res)))
-
-(defn test-deff-set-size [min max]
-  (for [i (range min max)]
-    (do
-      (pprint i)
-      (deff-set-size->num-ops i))))
-
-
-(def results (test-deff-set-size 50 100))
-
-results
-
-(time (b/setup-backend scheduler-ir jan-config))
-
-(pprint (fset/boolencode scheduler-ir))
-
-
-(spit "components/encoder/resources/encoder/demo-auto.mch" (ir->b demo-mch-translated))
-
-(pprint demo-mch-translated)
-
-
-(pprint test)
-
-(def scheduler-auto-ir (fset/boolencode scheduler-ir))
-
-(pprint (fset/unroll-ops scheduler-ir))
-
-
-(b/setup-backend scheduler-ir jan-config)
-
-(pprint (fset/boolencode scheduler-ir :excluded-vars #{:active :ready :waiting}))
-
-(pprint scheduler-ir)
-
-(pprint scheduler-auto-ir)
-
-(time (fset/boolencode scheduler-ir))
-
-scheduler-auto-ir
-
-(ir->b scheduler-auto-ir)
-
-(b/model-check (b->ir (ir->b (fset/boolencode scheduler-ir))))
-
-(spit "components/encoder/resources/encoder/scheduler_auto1.mch" (ir->b scheduler-auto-ir))
-
+(fset/num-ops scheduler-ir) ;; => 5
+(fset/num-unrollable-ops scheduler-ir) ;; => 4
 
 ;; Train
 
+(fset/num-vars train-ir) ;; => 7
+(fset/num-unrollable-vars train-ir) ;; 7
 
-(def train-ir (b->ir (slurp "components/encoder/resources/encoder/Train.mch")))
+(fset/num-ops train-ir) ;; => 8
+(fset/num-unrollable-ops train-ir) ;; => 8
 
-(pprint train-ir)
+;; Library
 
-;(def train-auto-ir (fset/unroll-ops train-ir ))
+(fset/num-vars library-ir) ;; => 4
+(fset/num-unrollable-vars library-ir) ;; => 3
 
-(def train-auto-ir (fset/boolencode train-ir))
-
-(pprint train-auto-ir)
-
-(spit "components/encoder/resources/encoder/train_auto1.mch" (ir->b train-auto-ir)) ;; Write the translated IR to another file
-
-(b/setup-backend train-ir jan-config)
-
-(def up (unroll-predicate {:tag :for-all,
-                           :ids [:x :y],
-                           :implication
-                           {:tag :implication,
-                            :preds
-                            '({:tag :and,
-                               :preds
-                               ({:tag :member, :elem :x, :set :BLOCKS}
-                                {:tag :member, :elem :y, :set :BLOCKS}
-                                {:tag :member,
-                                 :elem {:tag :maplet, :left :x, :right :y},
-                                 :set :TRK})}
-                              {:tag :exists,
-                               :ids [:r],
-                               :pred
-                               {:tag :and,
-                                :preds
-                                ({:tag :member, :elem :r, :set :ROUTES}
-                                 {:tag :member,
-                                  :elem {:tag :maplet, :left :x, :right :y},
-                                  :set {:tag :fn-call, :f :nxt, :args (:r)}})}})}}))
-
-(unroll-predicate {:tag :member :elem {:tag :maplet :left :A :right :B} :set {:tag :fn-call :f :nxt :args '(:R1)}})
-
-(setexpr->bitvector {:tag :fn-call :f :nxt :args '(:R1)})
-
-(b/get-elem-index {:tag :maplet :left :A :right :B})
-
-(pprint (simplify-all up))
+(fset/num-ops library-ir) ;; => 10
+(fset/num-unrollable-ops library-ir) ;; => 10
