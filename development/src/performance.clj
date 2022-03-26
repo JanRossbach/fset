@@ -11,6 +11,7 @@
    :unroll-sub true
    :deff-set-size 2
    :logging false
+   :prob-logging false
    :excluded-vars #{}})
 
 (set-config! performance-config)

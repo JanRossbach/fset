@@ -9,6 +9,7 @@
    :unroll-sub true
    :deff-set-size 2
    :logging false
+   :prob-logging false
    :excluded-vars #{}})
 
 (def unroll-ops-default-config
@@ -17,6 +18,7 @@
    :unroll-sub false
    :deff-set-size 2
    :logging false
+   :prob-logging false
    :excluded-vars :all})
 
 (defonce config (atom default-config))

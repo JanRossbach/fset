@@ -61,7 +61,13 @@
 
 (defn boolencode
   [ir config]
-  (log/swap-config! assoc :min-level (if (:logging config)
+  (log/swap-config! assoc :min-level (if (:prob-logging config)
                                        :debug
-                                       :warn))
-  (postwalk identity (unroll-machine (b/setup-backend ir config))))
+                                       (if (:logging config)
+                                         :info
+                                         :warn)))
+  (try
+    (postwalk identity (unroll-machine (b/setup-backend ir config)))
+    (catch Exception e
+      (log/info (str "Failed Translation of Machine:" ir) e)
+      ir)))

@@ -28,15 +28,13 @@ clone this repositoriy and start a repl with the dev alias. You can then run the
 
 (fset/boolencode ir :logging true)
 
-;; Define a personal config
+;; Or you can do a complete personal configuration
 (def my-config
-  {:max-unroll-size 200
-   :unroll-invariant true
-   :unroll-sub true
-   :simplify-result true
-   :deff-set-size 2
-   :logging true
-   :excluded-vars #{}})
+  {:max-unroll-size 200 ;; Upper bound for variable size
+   :deff-set-size 2 ;; How many variables should deferred sets be expanded to?
+   :logging true ;; Info level logging including errors and unsupported expressions
+   :prob-logging false ;; All logging enabled including prob debugging
+   :excluded-vars #{}}) ;; Exclude individual variables from being expanded
 
 (fset/set-config! my-config) ;; You can apply your config as the default for the session
 
