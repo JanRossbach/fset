@@ -36,7 +36,7 @@
   [op]
   (log/info (str "Unrolling Operation " (:name op)))
   (try (let [bindings (b/op->bindings op)]
-         (if (seq bindings)
+         (if (and (seq bindings) (empty? (:returns op)))
            (map (partial new-op op) bindings)
            (list (assoc op :body (unroll-sub (:body op))))))
        (catch Exception e

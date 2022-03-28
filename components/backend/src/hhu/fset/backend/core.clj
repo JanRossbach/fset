@@ -116,9 +116,10 @@
   (if (su/carrier? ir expr)
     true
     (match (get-type-ir ss expr)
-      {:tag :power-set :set (_ :guard (partial finite-type? ir ss config))} true
-      {:tag :integer-set} false
-      {:tag :relation :sets ([A B] :seq)} (and (su/carrier? ir A) (su/carrier? ir B) (< (count (get-relation-elems ss A B)) (:max-unroll-size config)))
+           {:tag :power-set :set {:tag :integer-set}} false
+           {:tag :integer-set} false
+           {:tag :power-set :set (_ :guard (partial finite-type? ir ss config))} true
+           {:tag :relation :sets ([A B] :seq)} (and (su/carrier? ir A) (su/carrier? ir B) (< (count (get-relation-elems ss A B)) (:max-unroll-size config)))
       _ false)))
 
 (defn finite?
@@ -230,13 +231,21 @@
   (let [idbinds (map (fn [id] (list id (get-param-elems ir ss id))) ids)]
     (reduce combine [] idbinds)))
 
-(defn op->bindings
-  [ss op]
-  (let [ids (concat (:args op) (get-non-det-ids op))]
-    (ids->bindings op ss ids)))
+(def op->bindings
+  (memoize
+   (fn [ss op]
+     (let [ids (concat (:args op) (get-non-det-ids op))]
+       (ids->bindings op ss ids)))))
 
-(defn unrollable-op? [ss op]
+(defn unrollable-op?
+  [ss op]
   (try
-    (seq (op->bindings ss op))
+    (and
+     (empty? (:returns op))
+     (seq (op->bindings ss op)))
     (catch Exception e
       false)))
+
+(defn unrollable-param?
+  [ir ss op id]
+  (unrollable-op? ss op))

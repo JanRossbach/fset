@@ -76,6 +76,14 @@
   (let [{:keys [ir ss cfg]} @db]
     (core/unrollable? ir ss cfg id)))
 
+(defn unrollable-op?
+  [op]
+  (core/unrollable-op? (:ss @db) op))
+
+(defn unrollable-param?
+  [op id]
+  (core/unrollable-param? (:ir @db) (:ss @db) op id))
+
 (defn fn-call?
   [expr]
   (core/fn-call? expr))

@@ -26,8 +26,12 @@
 (def test-ir (mch->ir "Test.mch"))
 (def scheduler-ir (mch->ir "scheduler.mch"))
 (def train-ir (mch->ir "Train.mch"))
+
 (def comb-ir (mch->ir "Combinations.mch"))
 (def library-ir (mch->ir "Library.mch"))
+
+(ir->b (fset/boolencode scheduler-ir))
+
 
 ;; Unroll Numbers
 

@@ -45,3 +45,5 @@ TODOs.org
 **/*.prob
 **/*-auto.mch
 **/machine-pack/*
+
+*~undo-tree~*

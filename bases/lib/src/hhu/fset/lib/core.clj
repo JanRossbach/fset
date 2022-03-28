@@ -39,8 +39,10 @@
   [config kwargs]
   (reduce (fn [cfg [k v]] (assoc cfg k v)) config (partition 2 kwargs)))
 
-(defn boolencode [ir & kwargs]
+(defn boolencode
+  [ir & kwargs]
   (encoder/boolencode ir (make-config @config kwargs)))
+
 
 (defn unroll-ops [ir & kwargs]
   (encoder/boolencode ir (make-config unroll-ops-default-config kwargs)))
