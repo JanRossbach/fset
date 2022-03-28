@@ -170,7 +170,7 @@
 (deftest substitutions-test
   (testing "Scheduler"
     (b/setup-backend scheduler test-config)
-    (are [x y] (= x (ir->b (simplify-all (trans/unroll-sub (b->ir (str "#SUBSTITUTION" y))))))
+    (are [x y] (= x (ir->b (simplify-all (trans/unroll-sub (b->ir (str "#SUBSTITUTION" y)) true))))
       "activePID1 := FALSE || activePID2 := FALSE"
       "active:={}"
 
@@ -203,6 +203,4 @@
 
       "SELECT not(activePID1=TRUE) & not(activePID2=TRUE) THEN activePID1 := TRUE || activePID2 := FALSE END "
       "SELECT active={} THEN active:={PID1} END"
-
-      "activePID1 := bool(PID1:x) || activePID2 := bool(PID2:x)"
-      "ANY x WHERE x:PID THEN active:=x END")))
+      )))

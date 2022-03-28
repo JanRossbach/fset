@@ -205,8 +205,9 @@
            (map :name uvar)))
     (list {:tag :becomes-such :ids (list id) :pred (boolvars->set pred)})))
 
+
 (defn unroll-sub
-  [sub]
+  [sub op-unroll]
   (if (not (b/unroll-sub?))
     sub
     ((fn T [e]
@@ -219,9 +220,10 @@
          {:tag :choice :subs substitutions} {:tag :choice :subs (map T substitutions)}
          {:tag :if-sub :cond condition :then then :else else} {:tag :if-sub :cond (unroll-predicate condition) :then (T then) :else (T else)}
          {:tag :select :clauses clauses} {:tag :select :clauses (mapcat (fn [[P S]] [(unroll-predicate P) (T S)]) (partition 2 clauses))}
-         {:tag :any :ids (_ :guard (fn [ids] (every? b/unrollable-param? ids))) :pred pred :subs then} {:tag :select :clauses (list (unroll-predicate pred)
-                                                                                                                                   {:tag :parallel-sub :subs (map T then)})}
-         {:tag :any :ids ids :pred pred :subs then} {:tag :any :ids (filter (fn [id] (not (b/unrollable-param? id))) ids) :pred (unroll-predicate pred) :subs (map T then)}
+         {:tag :any :ids ids :pred pred :subs then}
+         (if op-unroll
+           {:tag :select :clauses (list (unroll-predicate pred) {:tag :parallel-sub :subs (map T then)})}
+           {:tag :any :ids ids :pred (unroll-predicate pred) :subs (map T then)})
          {:tag :assignment :id-vals id-vals} {:tag :parallel-sub :subs (mapcat unroll-id-val (partition 2 id-vals))}
          {:tag :becomes-element-of :ids ids :set sete} {:tag :becomes-element-of :ids ids :set (boolvars->set sete)}
          {:tag :becomes-such :ids ([id] :seq) :pred pred} {:tag :parallel-sub :subs (unroll-becomes id pred)}

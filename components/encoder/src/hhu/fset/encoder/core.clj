@@ -29,7 +29,7 @@
              lift-guards
              :body
              (b/apply-binding binding)
-             unroll-sub
+             (unroll-sub true)
              simplify-all)})
 
 (defn unroll-operation
@@ -38,10 +38,10 @@
   (try (let [bindings (b/op->bindings op)]
          (if (and (seq bindings) (empty? (:returns op)))
            (map (partial new-op op) bindings)
-           (list (assoc op :body (unroll-sub (:body op))))))
+           (list (assoc op :body (unroll-sub (:body op) false)))))
        (catch Exception e
          (log/info (str "Failed translating Operation: " op) e)
-         (list (assoc op :body (unroll-sub (:body op)))))))
+         (list (assoc op :body (unroll-sub (:body op) false))))))
 
 (defn unroll-clause
   [c]
@@ -50,7 +50,7 @@
     {:tag :invariants :values v} {:tag :invariants :values (filter (fn [invar] (not (= {} invar)))
                                                                    (cons (BOOLDEFS (map :name (b/get-all-bools)))
                                                                          (if (b/unroll-invariant?) (map (comp simplify-all unroll-predicate) v) (boolvars->set v))))}
-    {:tag :init :values v} (simplify-all {:tag :init :values (map unroll-sub v)})
+    {:tag :init :values v} (simplify-all {:tag :init :values (map (fn [sub] (unroll-sub sub false)) v)})
     {:tag :operations :values v} {:tag :operations :values (mapcat unroll-operation v)}
     {:tag :assertions :values v} (simplify-all {:tag :assertions :values (map unroll-predicate v)})
     _ c))
