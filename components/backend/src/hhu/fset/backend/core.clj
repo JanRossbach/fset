@@ -116,11 +116,9 @@
   (if (su/carrier? ir expr)
     true
     (match (get-type-ir ss expr)
-           {:tag :power-set :set {:tag :integer-set}} false
-           {:tag :integer-set} false
-           {:tag :power-set :set (_ :guard (partial finite-type? ir ss config))} true
+           {:tag :power-set :set (_ :guard (partial su/carrier? ir))} true
            {:tag :relation :sets ([A B] :seq)} (and (su/carrier? ir A) (su/carrier? ir B) (< (count (get-relation-elems ss A B)) (:max-unroll-size config)))
-      _ false)))
+           _ false)))
 
 (defn finite?
   [ir ss config expr]
