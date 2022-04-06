@@ -1,5 +1,6 @@
 (ns specifications
   (:require
+   [clojure.java.io :as io]
    [taoensso.timbre :as log]
    [hhu.fset.backend.lisb-util :refer [model-check]]
    [clojure.string :refer [replace-first]]
@@ -13,7 +14,7 @@
 (def FERTIG-DIR (java.io.File. "/home/jan/School/Projektarbeit/translations/fertig/"))
 (def DEBUG-DIR (java.io.File. "/home/jan/School/Projektarbeit/translations/debug/"))
 
-(def machine-files (remove (fn [file] (.isDirectory file)) (file-seq SRC-DIR)))
+(def machine-files (remove (fn [file] (.isDirectory file)) (file-seq VIABLE-DIR)))
 
 (defn add-auto
   "Adds _auto to a filename before the Extension"
@@ -36,12 +37,14 @@
 (defn translate-machines [directory-path]
   (let [files (remove (fn [file] (.isDirectory file)) (file-seq directory-path))]
     (for [file files]
-      (translate-machine file))))
+      (do (translate-machine file)
+          (io/copy file (io/file (str SRC-DIR "/" (.getName file))))
+          (io/delete-file file)))))
 
 (defn clear-directory [directory-path]
   (let [files (remove (fn [file] (.isDirectory file)) (file-seq directory-path))]
     (for [file files]
-      (clojure.java.io/delete-file file))))
+      (io/delete-file file))))
 
 (defn file-index->ir
   [index]
@@ -51,7 +54,9 @@
   [old-ir new-ir]
   (let [old-mc (model-check old-ir)
         new-mc (model-check new-ir)]
-    (= (:transitions old-mc) (:transitions new-mc))))
+    (and
+     (not= (fset/num-vars old-ir) (fset/num-vars new-ir))
+     (= (:transitions old-mc) (:transitions new-mc)))))
 
 (defn sort-machines [src-dir]
   (let [src-files (remove (fn [file] (.isDirectory file)) (file-seq src-dir))]
@@ -69,12 +74,16 @@
 
 (comment
 
+  (translate-machine (first machine-files))
+
   (fset/set-config-var! :logging false)
+
 
   (def test-ir (b->ir (slurp (str SRC-DIR "/NormalisationTest.mch"))))
   (fset/boolencode test-ir)
 
   (clear-directory SRC-DIR)
+
   (clear-directory AUTO-DIR)
 
   (ir->b (fset/boolencode (file-index->ir 4)))
@@ -89,4 +98,4 @@
 
   (sort-machines SRC-DIR)
 
-)
+  )
