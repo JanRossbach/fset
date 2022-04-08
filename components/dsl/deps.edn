@@ -1,5 +1,5 @@
 {:paths ["src" "resources"]
  :deps {net.mikera/core.matrix {:mvn/version "0.62.0"}
-        org.clojars.pkoerner/lisb {:mvn/version "0.0.4"}}
+        org.clojars.pkoerner/lisb {:mvn/version "0.0.5-SNAPSHOT"}}
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {}}}}
