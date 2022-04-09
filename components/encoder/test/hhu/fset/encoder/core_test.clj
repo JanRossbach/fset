@@ -15,6 +15,7 @@
    :unroll-sub true
    :deff-set-size 2
    :logging false
+   :keep-statespace true
    :excluded-vars #{}})
 
 (deftest machine-clauses-test

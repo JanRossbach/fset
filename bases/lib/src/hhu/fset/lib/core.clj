@@ -10,6 +10,7 @@
    :deff-set-size 2
    :logging false
    :prob-logging false
+   :keep-statespace false
    :excluded-vars #{}})
 
 (def unroll-ops-default-config
@@ -43,6 +44,9 @@
   [ir & kwargs]
   (encoder/boolencode ir (make-config @config kwargs)))
 
+(defn boolencode-cfg
+  [ir cfg]
+  (encoder/boolencode ir cfg))
 
 (defn unroll-ops [ir & kwargs]
   (encoder/boolencode ir (make-config unroll-ops-default-config kwargs)))

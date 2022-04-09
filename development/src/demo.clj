@@ -24,7 +24,7 @@
 (defn translate-machine
   [filename]
   (let [machine-ir (read-machine filename)
-        translated-ir (fset/boolencode machine-ir)
+        translated-ir (fset/boolencode machine-ir :logging true)
         auto-filename (str SRC-DIR "/" (add-auto filename))]
     (spit auto-filename (ir->b translated-ir))))
 

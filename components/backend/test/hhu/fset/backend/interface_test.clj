@@ -9,6 +9,7 @@
    :unroll-invariant true
    :simplify-result true
    :deff-set-size 2
+   :keep-statespace true
    :logging false
    :excluded-vars #{:TRK :rsrtbl}})
 

@@ -4,12 +4,7 @@ A Clojure library designed to automatically rewrite B machines using lisb.
 The rewrite removes enumerated and deferred sets up to a certain size and replaces them with boolean variables.
 This is done to increase performance of partial order reduction optimizations in prob.
 
-## Installation
-
-This tool is still in development. If you want to try it out anyway,
-clone this repositoriy and start a repl with the dev alias. You can then run the functions as described below.
-
-## Basic Usage and Configuration
+## Repl Usage and Configuration
 
 ``` clojure
 (ns myns.core
@@ -46,6 +41,38 @@ clone this repositoriy and start a repl with the dev alias. You can then run the
 
 ```
 
+## Installation of cli
+
+To install the application under Linux, clone the repository and execute the build.sh.
+Requirements:
+ - Java (tested on version 11)
+ - clojure cli tool: https://clojure.org/guides/getting_started#_clojure_installer_and_cli_tools
+
+```
+chmod +x build.sh
+./build.sh
+```
+
+## Using the cli
+
+In order to invoke the jar file to translate machines.
+```
+java -jar /path/to/fset.jar file_to_translate.mch
+```
+This will create/override a new file in the same directory as the target file with _auto before the extension,
+which contains the translated version.
+
+To configure the CLI similarly to the repl version, you can use option flags.
+The -h flags prints information on the other available options.
+
+```
+java -jar /path/to/fset.jar -h
+```
+
+For convenient invocation it is currently recommended to alias the jar file in your bashrc/zshrc like so
+```
+alias fset="java -jar /path/to/fset/fset.jar"
+```
 
 ## License
 

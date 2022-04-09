@@ -19,6 +19,7 @@
    :unroll-invariant true
    :unroll-sub true
    :deff-set-size 2
+   :keep-statespace true
    :logging false
    :excluded-vars #{:TRK :rsrtbl}})
 

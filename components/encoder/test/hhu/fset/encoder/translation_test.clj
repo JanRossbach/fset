@@ -21,7 +21,6 @@
     A (simplify-all (trans/bmmul A A))
     C (trans/bemap (constantly TRUE) A)))
 
-
 (def mch-dir "components/encoder/resources/encoder/test/")
 (def scheduler (b->ir (slurp (str mch-dir "scheduler.mch"))))
 (def demo (b->ir (slurp (str mch-dir "demo.mch"))))
@@ -30,11 +29,10 @@
   {:max-unroll-size 200
    :unroll-invariant true
    :unroll-sub true
+   :keep-statespace true
    :deff-set-size 2
    :logging false
    :excluded-vars #{}})
-
-
 
 (deftest setexpr->bitvector-test
   (testing "Sets via Scheduler"

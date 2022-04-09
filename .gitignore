@@ -17,6 +17,7 @@
 # File-based project format
 *.iws
 *.ipr
+*.jar
 
 # Cursive Clojure plugin
 .idea/replstate.xml

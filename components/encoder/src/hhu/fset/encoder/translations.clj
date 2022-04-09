@@ -7,7 +7,7 @@
    [hhu.fset.dsl.interface :refer [AND OR =TRUE NOT TRUE FALSE BOOL IN CARDINALITY bv->setexpr EQUALS ASSIGN <=> =>]]
    [hhu.fset.backend.interface :as b]))
 
-(declare unroll-predicate)
+(declare unroll-predicate setexpr->bitvector1 setexpr->bitvector2)
 
 (defn bmtranspose [bm]
   (apply (partial mapv vector) bm))
@@ -29,6 +29,10 @@
   (apply mapv (fn [& rows] (apply mapv (fn [& elems] (apply f elems)) rows)) bms))
 
 (defn setexpr->bitvector
+  [set-expr]
+  (flatten (setexpr->bitvector1 set-expr)))
+
+(defn setexpr->bitvector1
   "
   The Expression translation function (T_e)
   Takes a set expression and returns a predicate sequence or cardinality |Type(set-expr)|.
@@ -39,66 +43,70 @@
   Out: IR pred seq
   "
   [set-expr]
-  (flatten
-   ((fn T [e]
-      (match (if (not (b/contains-vars? e)) (b/eval-constant-formula e) e)
-        (set-elem :guard b/set-element?) (T #{set-elem})
-        #{} (repeat (b/max-unroll-size) FALSE)
-        (_ :guard b/carrier?) (repeat (b/max-unroll-size) TRUE)
+  (let [T setexpr->bitvector1
+        e set-expr]
+    (match (if (not (b/contains-vars? e)) (b/eval-constant-formula e) e)
+           (set-elem :guard b/set-element?) (T #{set-elem})
+           #{} (repeat (b/max-unroll-size) FALSE)
+           (_ :guard b/carrier?) (repeat (b/max-unroll-size) TRUE)
 
-        {:tag :comprehension-set :ids ([id] :seq) :pred pred} (bemap (fn [elem] (unroll-predicate (b/apply-binding pred [[id elem]]))) (b/get-type-elem-matrix e))
+           {:tag :comprehension-set :ids ([id] :seq) :pred pred} (bemap (fn [elem] (unroll-predicate (b/apply-binding pred [[id elem]]))) (b/get-type-elem-matrix e))
 
-        (enumeration-set :guard #(and (set? %) (every? b/set-element? %)))
-        (vector (mapv (fn [el] (if (contains? enumeration-set el) TRUE FALSE)) (b/get-type-elems (first enumeration-set))))
+           (enumeration-set :guard #(and (set? %) (every? b/set-element? %)))
+           (vector (mapv (fn [el] (if (contains? enumeration-set el) TRUE FALSE)) (b/get-type-elems (first enumeration-set))))
 
-        (enumeration-relation :guard #(and (set? %) (b/simple-tuple? (first %))))
-        (bemap (fn [el] (if (contains? enumeration-relation el) TRUE FALSE)) (b/get-type-elem-matrix (first enumeration-relation)))
+           (enumeration-relation :guard #(and (set? %) (b/simple-tuple? (first %))))
+           (bemap (fn [el] (if (contains? enumeration-relation el) TRUE FALSE)) (b/get-type-elem-matrix (first enumeration-relation)))
 
-        (enumeration-set :guard #(and (set? %) (= 1 (count %)) (every? b/fn-call? %)))
-        (T (first enumeration-set))
+           (enumeration-set :guard #(and (set? %) (= 1 (count %)) (every? b/fn-call? %)))
+           (T (first enumeration-set))
 
-        ;; Operators
-        {:tag :union :sets ([A B] :seq)} (bmadd (T A) (T B))
-        {:tag :intersection :sets ([A B] :seq)} (bemul (T A) (T B))
-        {:tag :difference :sets ([A B] :seq)} (bmdiff (T A) (T B))
-        {:tag :unite-sets :set-of-sets ss} (apply bmadd (map T ss))
-        {:tag :intersect-sets :set-of-sets ss} (apply bemul (map T ss))
-        {:tag :sub :nums ns} (T {:tag :difference :sets ns})
+           ;; Operators
+           {:tag :union :sets ([A B] :seq)} (bmadd (T A) (T B))
+           {:tag :intersection :sets ([A B] :seq)} (bemul (T A) (T B))
+           {:tag :difference :sets ([A B] :seq)} (bmdiff (T A) (T B))
+           {:tag :unite-sets :set-of-sets ss} (apply bmadd (map T ss))
+           {:tag :intersect-sets :set-of-sets ss} (apply bemul (map T ss))
+           {:tag :sub :nums ns} (T {:tag :difference :sets ns})
 
+           ;; Variables
+           (variable :guard b/unrollable-var?)
+           (bemap (fn [elem] (=TRUE (b/create-boolname variable elem))) (b/get-type-elem-matrix variable))
+
+           (c :guard #(and (b/constant? %) (b/unrollable? %)))
+           (let [ec (b/eval-constant c)] (bemap (fn [elem] (if (contains? ec elem) TRUE FALSE)) (b/get-type-elem-matrix c)))
+           expr (setexpr->bitvector2 expr))))
+
+(defn setexpr->bitvector2
+  "Extension for patterns in the setexpr->bitvector function to avoid
+  pattern matching Problems with aot-compiling for the cli."
+  [expr]
+  (let [T setexpr->bitvector1]
+    (match expr
         ;; Relations
-        {:tag :cartesian-product :sets sets} (reduce bmadd (map T sets))
-        {:tag :id :set sete} (bemap (fn [{:keys [left right]}] (if (= left right) TRUE FALSE)) (b/get-type-elem-matrix sete))
-        {:tag :inverse :rel r} (bmtranspose (T r))
-        {:tag :image :rel r :set s} (bmmul (T s) (T r))
-        {:tag :fn-call :f f :args ([(args :guard b/set-element?)] :seq)} (T {:tag :image :rel f :set #{args}})
-        {:tag :fn-call :f f :args ([args] :seq)} (T {:tag :image :rel f :set args})
-        {:tag :dom :rel r} (vector (mapv (fn [row] (apply OR row)) (T r)))
-        {:tag :ran :rel r} (T {:tag :dom :rel {:tag :inverse :rel r}})
-        {:tag :domain-restriction :set s :rel r} (mapv (fn [el row] (mapv (fn [elem] (AND el elem)) row)) (first (T s)) (T r))
-        {:tag :range-restriction :set s :rel r} (bmtranspose (T {:tag :domain-restriction :set s :rel {:tag :inverse :rel r}}))
-        {:tag :domain-subtraction :set s :rel r} (mapv (fn [el row] (mapv (fn [elem] (AND (NOT el) elem)) row)) (first (T s)) (T r))
-        {:tag :range-subtraction :set s :rel r} (bmtranspose (T {:tag :domain-subtraction :set s :rel {:tag :inverse :rel r}}))
-        {:tag :composition :rels rels} (reduce bmmul (map T rels))
-        {:tag :iterate :rel rel :num num} (let [Tr (T rel)
-                                                it0 (T {:tag :union :sets [{:tag :dom :rel rel} {:tag :ran :rel rel}]})]
-                                            (nth (iterate (partial bmmul Tr) it0) num))
-        {:tag :override :rels ([A B] :seq)} (T {:tag :union :sets [B {:tag :domain-subtraction :set {:tag :dom :rel B} :rel A}]})
-        {:tag :lambda :ids ([id] :seq) :pred pred :expr expr} (bemap (fn [{:keys [left right]}] (AND
-                                                                                                 (unroll-predicate (b/apply-binding pred [[id left]]))
-                                                                                                 (nth (T expr) (b/get-elem-index right))))
-                                                                     (b/get-type-elem-matrix e))
-        ;; Variables
-        (variable :guard b/unrollable-var?)
-        (bemap (fn [elem] (=TRUE (b/create-boolname variable elem))) (b/get-type-elem-matrix variable))
-        ;; (variable :guard b/variable?)
-        ;; (bemap (fn [elem] (EQUALS variable elem)) (b/get-type-elem-matrix variable))
+           {:tag :cartesian-product :sets sets} (reduce bmadd (map T sets))
+           {:tag :id :set sete} (bemap (fn [{:keys [left right]}] (if (= left right) TRUE FALSE)) (b/get-type-elem-matrix sete))
+           {:tag :inverse :rel r} (bmtranspose (T r))
+           {:tag :image :rel r :set s} (bmmul (T s) (T r))
+           {:tag :fn-call :f f :args ([(args :guard b/set-element?)] :seq)} (T {:tag :image :rel f :set #{args}})
+           {:tag :fn-call :f f :args ([args] :seq)} (T {:tag :image :rel f :set args})
+           {:tag :dom :rel r} (vector (mapv (fn [row] (apply OR row)) (T r)))
+           {:tag :ran :rel r} (T {:tag :dom :rel {:tag :inverse :rel r}})
+           {:tag :domain-restriction :set s :rel r} (mapv (fn [el row] (mapv (fn [elem] (AND el elem)) row)) (first (T s)) (T r))
+           {:tag :range-restriction :set s :rel r} (bmtranspose (T {:tag :domain-restriction :set s :rel {:tag :inverse :rel r}}))
+           {:tag :domain-subtraction :set s :rel r} (mapv (fn [el row] (mapv (fn [elem] (AND (NOT el) elem)) row)) (first (T s)) (T r))
+           {:tag :range-subtraction :set s :rel r} (bmtranspose (T {:tag :domain-subtraction :set s :rel {:tag :inverse :rel r}}))
+           {:tag :composition :rels rels} (reduce bmmul (map T rels))
+           {:tag :iterate :rel rel :num num} (let [Tr (T rel)
+                                                   it0 (T {:tag :union :sets [{:tag :dom :rel rel} {:tag :ran :rel rel}]})]
+                                               (nth (iterate (partial bmmul Tr) it0) num))
+           {:tag :override :rels ([A B] :seq)} (T {:tag :union :sets [B {:tag :domain-subtraction :set {:tag :dom :rel B} :rel A}]})
+           {:tag :lambda :ids ([id] :seq) :pred pred :expr expr} (bemap (fn [{:keys [left right]}] (AND
+                                                                                               (unroll-predicate (b/apply-binding pred [[id left]]))
+                                                                                               (nth (T expr) (b/get-elem-index right))))
+                                                                   (b/get-type-elem-matrix expr))
 
-        (c :guard #(and (b/constant? %) (b/unrollable? %)))
-        (let [ec (b/eval-constant c)] (bemap (fn [elem] (if (contains? ec elem) TRUE FALSE)) (b/get-type-elem-matrix c)))
-
-        _ (throw (ex-info "Unsupported Expression found!" {:expr set-expr
-                                                           :failed-because e}))))
-    set-expr)))
+           _ (throw (ex-info "Unsupported Expression found!" {:failed-because expr})))))
 
 (defn intexpr->intexpr
   [intexpr]
@@ -134,7 +142,7 @@
          {:tag :not-equals :left l :right r} (NOT (T (EQUALS l r)))
          {:tag :subset :sets ([s S] :seq)} (apply AND (map (fn [a b] (=> a b)) (T s) (T S)))
          {:tag :strict-subset :sets ([s S] :seq)} (let [Ts (T s) TS (T S)] (apply AND (cons (apply OR (map (fn [a b] (AND a (NOT b))) Ts TS))
-                                                                                          (map (fn [a b] (=> a b)) Ts TS))))
+                                                                                            (map (fn [a b] (=> a b)) Ts TS))))
          {:tag :equals :left {:tag :fn-call :f f :args ([{:tag :fn-call :f g :args ([elem] :seq)}] :seq)} :right (r :guard b/set-element?)}
          (T {:tag :equals :left {:tag :image :rel f :set {:tag :image :rel g :set #{elem}}} :right #{r}})
 
@@ -149,7 +157,7 @@
          ;; Quantifiers
          {:tag :for-all :ids ids :implication {:tag :implication :preds ([P Q] :seq)}}
          (apply AND (map (fn [binding] (=> (T (b/apply-binding P binding))
-                                          (T (b/apply-binding Q binding))))
+                                           (T (b/apply-binding Q binding))))
                          (b/ids->bindings P ids)))
 
          {:tag :exists :ids ids :pred P}
@@ -176,9 +184,9 @@
 (defn unpack-fn-override
   [idval]
   (match idval
-         ([{:tag :fn-call :f (fid :guard b/unrollable-var?) :args ([(x :guard b/set-element?)] :seq)} (val :guard b/set-element?)] :seq)
-         (list fid {:tag :override :rels (list fid #{{:tag :maplet :left x :right val}})})
-         _ idval))
+    ([{:tag :fn-call :f (fid :guard b/unrollable-var?) :args ([(x :guard b/set-element?)] :seq)} (val :guard b/set-element?)] :seq)
+    (list fid {:tag :override :rels (list fid #{{:tag :maplet :left x :right val}})})
+    _ idval))
 
 (defn unroll-id-val
   [idval]

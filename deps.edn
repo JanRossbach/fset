@@ -9,7 +9,7 @@
                                 "components/simplifier/resources"
                                 "bases/lib/src"
                                 "bases/lib/resources"]
-                  :extra-deps {org.clojure/clojure {:mvn/version "1.11.1"}
+                  :extra-deps {org.clojure/clojure {:mvn/version "1.10.3"}
                                org.clojure/tools.deps.alpha {:mvn/version "0.12.1003"}
                                org.clojure/tools.cli {:mvn/version "1.0.206"}
                                criterium/criterium {:mvn/version "0.4.6"}
