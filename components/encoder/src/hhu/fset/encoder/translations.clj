@@ -165,8 +165,9 @@
 
          ;; Member
          {:tag :member :elem (_ :guard b/unrollable-var?) :set (_ :guard b/type?)} TRUE
-         {:tag :member :elem {:tag :fn-call :f f :args ([(arg :guard b/set-element?)] :seq)} :set S} (T {:tag :subset :sets (list {:tag :image :rel f :set #{arg}} S)})
          {:tag :member :elem (elem :guard #(or (b/set-element? %) (b/simple-tuple? %))) :set s} (=TRUE (BOOL (nth (T s) (b/get-elem-index elem))))
+         {:tag :member :elem {:tag :fn-call :f f :args ([(arg :guard b/set-element?)] :seq)} :set S} (T {:tag :subset :sets (list {:tag :image :rel f :set #{arg}} S)})
+         {:tag :member :elem elem :set (S :guard b/unrollable-var?)} (T {:tag :subset :sets (list #{elem} S)})
 
          ;; Numbers
          {:tag :equals :left l :right r} {:tag :equals :left (T l) :right (T r)}
