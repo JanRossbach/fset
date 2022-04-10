@@ -1,5 +1,6 @@
 (ns hhu.fset.cli.core
   (:require
+   [clojure.java.io :as io]
    [clojure.tools.cli :refer [parse-opts]]
    [hhu.fset.lib.core :refer [boolencode-cfg]]
    [clojure.string :refer [replace-first]]
@@ -18,7 +19,7 @@
           (ir->b (boolencode-cfg (b->ir (slurp filename)) cfg)))))
 
 (def cli-options
-  [["-d" "--deff-set-size SIZE" "Number of elements Defferred Sets are expanded to"
+  [["-d" "--deff-set-size SIZE" "Number of elements defferred Sets are expanded to"
     :default 2
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 1 %) "Must be a number larger than 1"]]
@@ -43,5 +44,5 @@
       (do
         (vec (for [arg arguments]
                (translate-machine
-                (str (System/getProperty "user.dir") "/" arg) options)))
+                (io/file arg) options)))
         (System/exit 0)))))
