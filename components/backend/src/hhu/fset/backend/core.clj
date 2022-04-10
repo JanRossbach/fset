@@ -219,11 +219,13 @@
 
 (defn combine
   [bindings [id elems]]
-  (if (empty? bindings)
-    (mapv (fn [elem] [[id elem]]) elems)
-    (for [b bindings
-          e elems]
-      (conj b [id e]))))
+  (if (< 10000 (count bindings))
+    (throw (ex-info "Too many Bindings generated" {}))
+    (if (empty? bindings)
+      (mapv (fn [elem] [[id elem]]) elems)
+      (for [b bindings
+            e elems]
+        (conj b [id e])))))
 
 (defn ids->bindings [ir ss ids]
   (let [idbinds (map (fn [id] (list id (get-param-elems ir ss id))) ids)]

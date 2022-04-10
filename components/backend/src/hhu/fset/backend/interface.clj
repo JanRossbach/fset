@@ -15,13 +15,17 @@
     (set x)
     #{x}))
 
-(defn kill-statespace! [config]
-  (let [ss (:ss @db)]
-    (if (not (or (:keep-statespace config) (nil? ss))) (.kill ss) nil)))
+(defn kill-statespace! [ir config]
+  (let [ss (:ss @db)
+        curr-ir (:ir @db)]
+    (if (not (or (:keep-statespace config)
+                 (nil? ss)
+                 (= ir curr-ir)))
+      (.kill ss) nil)))
 
 (defn setup-backend
   [ir config]
-  (kill-statespace! config)
+  (kill-statespace! ir config)
   (let [new-ir (su/replace-def-sets-with-enum-sets (:deff-set-size config) ir)
         ss (lu/get-statespace new-ir)]
     (.explore (.getState ss "root"))
