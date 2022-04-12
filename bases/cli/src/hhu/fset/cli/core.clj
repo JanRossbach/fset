@@ -2,7 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.tools.cli :refer [parse-opts]]
-   [hhu.fset.lib.core :refer [boolencode-cfg]]
+   [hhu.fset.encoder.interface :refer [boolencode]]
    [clojure.string :refer [replace-first]]
    [lisb.translation.util :refer [ir->b b->ir]])
   (:gen-class))
@@ -16,7 +16,7 @@
   [filename options]
   (let [cfg (assoc options :unroll-invariant true :unroll-sub true :excluded-vars #{})]
     (spit (str (add-auto filename))
-          (ir->b (boolencode-cfg (b->ir (slurp filename)) cfg)))))
+          (ir->b (boolencode (b->ir (slurp filename)) cfg)))))
 
 (def cli-options
   [["-d" "--deff-set-size SIZE" "Number of elements defferred Sets are expanded to"
