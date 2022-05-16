@@ -1,11 +1,11 @@
-(ns hhu.fset.backend.core
+(ns fset.backend.core
   (:require
    [clojure.core.matrix :as m]
    [clojure.core.match :refer [match]]
    [com.rpl.specter :as s]
-   [hhu.fset.backend.util :refer [create-boolname]]
-   [hhu.fset.backend.lisb-util :as lu]
-   [hhu.fset.backend.specter-util :as su]
+   [fset.backend.util :refer [create-boolname]]
+   [fset.backend.lisb-util :as lu]
+   [fset.backend.specter-util :as su]
    [lisb.translation.util :refer [b->ir]]
    [lisb.core :refer [eval-ir-formula]]
    [lisb.translation.lisb2ir :refer [bmember? bcomprehension-set bexists band b=]]))

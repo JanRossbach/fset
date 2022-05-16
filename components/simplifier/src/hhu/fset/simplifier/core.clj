@@ -2,7 +2,7 @@
   (:require
    [hhu.fset.dsl.interface :refer [AND FALSE AND TRUE NOT]]
    [clojure.core.match :refer [match]]
-   [hhu.fset.backend.interface :as b]
+   [fset.backend.interface :as b]
    [com.rpl.specter :as s]))
 
 (defn simplify-formula

@@ -1,6 +1,6 @@
-(ns hhu.fset.backend.specter-util
+(ns fset.backend.specter-util
   (:require [com.rpl.specter :as s]
-            [hhu.fset.backend.util :refer [create-boolname]]
+            [fset.backend.util :refer [create-boolname]]
             [lisb.translation.lisb2ir :refer [band]]))
 
 (defn TAG [t] (s/path #(= (:tag %) t)))

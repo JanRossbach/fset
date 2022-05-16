@@ -3,7 +3,7 @@
    [clojure.test :refer [deftest testing are]]
    [lisb.translation.util :refer [b->ir ir->b]]
    [hhu.fset.encoder.core :as core]
-   [hhu.fset.backend.interface :as b]))
+   [fset.backend.interface :as b]))
 
 (def mch-dir "components/encoder/resources/encoder/test/")
 

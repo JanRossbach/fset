@@ -5,7 +5,7 @@
    [com.rpl.specter :as s]
    [clojure.core.match :refer [match]]
    [hhu.fset.dsl.interface :refer [AND OR =TRUE NOT TRUE FALSE BOOL IN CARDINALITY bv->setexpr EQUALS ASSIGN <=> =>]]
-   [hhu.fset.backend.interface :as b]))
+   [fset.backend.interface :as b]))
 
 (declare unroll-predicate setexpr->bitvector1 setexpr->bitvector2)
 

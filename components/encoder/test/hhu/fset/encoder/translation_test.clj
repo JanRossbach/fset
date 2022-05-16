@@ -6,7 +6,7 @@
    [lisb.translation.util :refer [b->ir ir->b]]
    [hhu.fset.dsl.interface :refer [TRUE FALSE]]
    [hhu.fset.encoder.translations :as trans]
-   [hhu.fset.backend.interface :as b]))
+   [fset.backend.interface :as b]))
 
 (def A (m/matrix [[TRUE FALSE] [FALSE TRUE]]))
 (def B (m/matrix [[FALSE TRUE] [TRUE FALSE]]))

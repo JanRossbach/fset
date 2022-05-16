@@ -1,7 +1,7 @@
 (ns hhu.fset.encoder.interface-test
   (:require
    [clojure.test :refer [deftest testing is]]
-   [hhu.fset.backend.interface :refer [model-check]]
+   [fset.backend.interface :refer [model-check]]
    [lisb.translation.util :refer [ir->b b->ir]]
    [hhu.fset.encoder.interface :as fset]))
 

@@ -6,7 +6,7 @@
    [clojure.core.match :refer [match]]
    [taoensso.timbre :as log]
    [hhu.fset.simplifier.interface :refer [simplify-all]]
-   [hhu.fset.backend.interface :as b]))
+   [fset.backend.interface :as b]))
 
 (defn add-guards
   [op guards]

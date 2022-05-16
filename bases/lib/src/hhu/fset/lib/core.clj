@@ -1,7 +1,7 @@
 (ns hhu.fset.lib.core
   (:require
    [hhu.fset.encoder.interface :as encoder]
-   [hhu.fset.backend.interface :as backend]))
+   [fset.backend.interface :as backend]))
 
 (def default-config
   {:max-unroll-size 200

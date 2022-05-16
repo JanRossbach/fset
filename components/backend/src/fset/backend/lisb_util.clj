@@ -1,4 +1,4 @@
-(ns hhu.fset.backend.lisb-util
+(ns fset.backend.lisb-util
   (:require
    [lisb.prob.animator :refer [state-space! get-result]]
    [lisb.translation.util :refer [ir->ast]])

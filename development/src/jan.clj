@@ -3,7 +3,7 @@
    [hhu.fset.lib.core :as fset]
    [clojure.pprint :refer [pprint]]
    [hhu.fset.simplifier.interface :refer [simplify-all]]
-   [hhu.fset.backend.interface :as b]
+   [fset.backend.interface :as b]
    [hhu.fset.encoder.core :refer [unroll-operation]]
    [hhu.fset.encoder.translations :refer [boolvar->set boolvars->set setexpr->bitvector unroll-predicate]]
    [lisb.translation.util :refer [b->ir ir->b]]))

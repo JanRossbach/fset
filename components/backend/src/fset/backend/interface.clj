@@ -1,10 +1,10 @@
-(ns hhu.fset.backend.interface
+(ns fset.backend.interface
   (:require
    [lisb.prob.animator :refer [get-result]]
-   [hhu.fset.backend.core :as core]
-   [hhu.fset.backend.lisb-util :as lu]
-   [hhu.fset.backend.specter-util :as su]
-   [hhu.fset.backend.util :as u]))
+   [fset.backend.core :as core]
+   [fset.backend.lisb-util :as lu]
+   [fset.backend.specter-util :as su]
+   [fset.backend.util :as u]))
 
 ;; Setup
 

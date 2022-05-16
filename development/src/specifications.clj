@@ -2,7 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [taoensso.timbre :as log]
-   [hhu.fset.backend.lisb-util :refer [model-check]]
+   [fset.backend.lisb-util :refer [model-check]]
    [clojure.string :refer [replace-first]]
    [lisb.translation.util :refer [ir->b b->ir]]
    [hhu.fset.lib.core :as fset]

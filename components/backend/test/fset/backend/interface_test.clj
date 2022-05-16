@@ -1,7 +1,7 @@
-(ns hhu.fset.backend.interface-test
+(ns fset.backend.interface-test
   (:require
    [clojure.test :as test :refer [deftest is testing]]
-   [hhu.fset.backend.interface :as b]
+   [fset.backend.interface :as b]
    [lisb.translation.util :refer [b->ir ir->b]]))
 
 (def test-config
