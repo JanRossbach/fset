@@ -1,5 +1,5 @@
 run:
-	clojure -M -m hhu.fset.cli.core scheduler.mch
+	clojure -M -m fset.cli.core scheduler.mch
 
 jar:
 	clojure -X:uberjar
