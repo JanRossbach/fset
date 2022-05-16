@@ -9,7 +9,7 @@ This is done to increase performance of partial order reduction optimizations in
 ``` clojure
 (ns myns.core
   (:require
-    [hhu.fset.lib.core :as fset]
+    [fset.lib.core :as fset]
     [lisb.translation.util :refer [b->ir ir->b]]))
 
 (def ir (b->ir (slurp "path/to/b/machine"))) ;; Read in the B machine IR from a file

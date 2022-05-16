@@ -8,7 +8,7 @@
    [fset.encoder.translations :refer [boolvar->set boolvars->set setexpr->bitvector unroll-predicate]]
    [lisb.translation.util :refer [b->ir ir->b]]))
 
-;; (def jan-config
+;; (def dev-config
 ;;   {:max-unroll-size 200
 ;;    :unroll-invariant true
 ;;    :unroll-sub true
