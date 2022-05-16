@@ -32,7 +32,7 @@
                     fset/boolencode
                     ir->b))
          (catch Exception e
-           (log/warn (str "Failed to translate Machine: " filename) e) e))))
+           (log/error (str "Failed to translate Machine: " filename) e) e))))
 
 (defn translate-machines [directory-path]
   (let [files (remove (fn [file] (.isDirectory file)) (file-seq directory-path))]
@@ -58,6 +58,8 @@
      (not= (fset/num-vars old-ir) (fset/num-vars new-ir))
      (= (:transitions old-mc) (:transitions new-mc)))))
 
+
+
 (defn sort-machines [src-dir]
   (let [src-files (remove (fn [file] (.isDirectory file)) (file-seq src-dir))]
     (for [src-file src-files]
@@ -78,9 +80,9 @@
 
   (fset/set-config-var! :logging false)
 
+  (def test-ir (b->ir (slurp (str VIABLE-DIR "/DetTest.mch"))))
 
-  (def test-ir (b->ir (slurp (str SRC-DIR "/NormalisationTest.mch"))))
-  (fset/boolencode test-ir)
+  (fset/boolencode test-ir :logging true :keep-statespace false)
 
   (clear-directory SRC-DIR)
 

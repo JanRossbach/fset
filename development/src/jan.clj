@@ -30,8 +30,13 @@
 (def comb-ir (mch->ir "Combinations.mch"))
 (def library-ir (mch->ir "Library.mch"))
 
-(ir->b (fset/boolencode scheduler-ir))
+(def testb2sat-ir (mch->ir "b2sat_test.mch"))
 
+(pprint testb2sat-ir)
+
+(spit (str mch-dir "/" "b2sat_auto.mch") (ir->b (fset/boolencode testb2sat-ir :logging true :keep-statespace true)))
+
+(unroll-predicate {:tag :member, :elem :x, :set :s})
 
 ;; Unroll Numbers
 
