@@ -1,4 +1,4 @@
-(ns jan
+(ns dev
   (:require
    [fset.lib.core :as fset]
    [clojure.pprint :refer [pprint]]
