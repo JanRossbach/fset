@@ -5,16 +5,10 @@
    [fset.backend.lisb-util :refer [model-check]]
    [clojure.string :refer [replace-first]]
    [lisb.translation.util :refer [ir->b b->ir]]
-   [hhu.fset.lib.core :as fset]
+   [fset.lib.core :as fset]
    [clojure.pprint :refer [pprint]]))
 
-(def SRC-DIR (java.io.File. "/home/jan/School/Projektarbeit/translations/src/"))
-(def VIABLE-DIR (java.io.File. "/home/jan/School/Projektarbeit/translations/viable/"))
-(def AUTO-DIR (java.io.File. "/home/jan/School/Projektarbeit/translations/auto/"))
-(def FERTIG-DIR (java.io.File. "/home/jan/School/Projektarbeit/translations/fertig/"))
-(def DEBUG-DIR (java.io.File. "/home/jan/School/Projektarbeit/translations/debug/"))
-
-(def machine-files (remove (fn [file] (.isDirectory file)) (file-seq VIABLE-DIR)))
+;; (def machine-files (remove (fn [file] (.isDirectory file)) (file-seq VIABLE-DIR)))
 
 (defn add-auto
   "Adds _auto to a filename before the Extension"

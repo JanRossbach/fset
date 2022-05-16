@@ -3,7 +3,7 @@
    [clojure.pprint :refer [pprint]]
    [clojure.string :refer [replace-first]]
    [lisb.translation.util :refer [b->ir ir->b]]
-   [hhu.fset.lib.core :as fset]))
+   [fset.lib.core :as fset]))
 
 
 (def SRC-DIR "components/encoder/resources/encoder/")

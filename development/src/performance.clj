@@ -3,7 +3,7 @@
    [criterium.core :refer [bench]]
    [clj-memory-meter.core :as mm]
    [lisb.translation.util :refer [ir->b b->ir]]
-   [hhu.fset.lib.core :refer [boolencode set-config!]]))
+   [fset.lib.core :refer [boolencode set-config!]]))
 
 (def performance-config
   {:max-unroll-size 200

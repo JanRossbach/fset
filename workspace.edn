@@ -1,4 +1,4 @@
-{:top-namespace "hhu.fset"
+{:top-namespace "fset"
  :interface-ns "interface"
  :default-profile-name "default"
  :compact-views #{}
